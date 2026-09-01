@@ -1,0 +1,59 @@
+/* =====================================================================
+   GAYA TAMPILAN SISINVEN
+   File ini sengaja dipisah dari HTML supaya warna/gaya tampilan
+   bisa diubah tanpa menyentuh kode PHP.
+   ===================================================================== */
+
+:root {
+    --sisinven-primary: #145374;
+    --sisinven-primary-dark: #0b2f42;
+    --sisinven-accent: #00A8CC;
+}
+
+body {
+    background-color: #f4f6f9;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.app-navbar {
+    background: linear-gradient(90deg, var(--sisinven-primary-dark), var(--sisinven-primary));
+}
+
+.card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.dashboard-stat .display-6 {
+    font-weight: 700;
+    color: var(--sisinven-primary);
+}
+
+.badge-baik { background-color: #198754; }
+.badge-rusak { background-color: #dc3545; }
+.badge-diperbaiki { background-color: #fd7e14; }
+
+.kode-barang {
+    font-family: 'Consolas', monospace;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--sisinven-primary-dark);
+}
+
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--sisinven-primary-dark), var(--sisinven-primary));
+}
+
+.login-card {
+    max-width: 400px;
+    width: 100%;
+}
+
+@media print {
+    .no-print { display: none !important; }
+}
