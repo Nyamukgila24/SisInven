@@ -1,4 +1,4 @@
-# SisInven — Sistem Manajemen Inventaris Barang
+# SisInven: Sistem Manajemen Inventaris Barang
 
 Aplikasi web sederhana untuk mencatat, mencari, dan melaporkan barang
 inventaris kantor. Dibuat dengan PHP + MySQL biasa (tanpa framework
