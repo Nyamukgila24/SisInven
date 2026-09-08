@@ -28,7 +28,6 @@ $daftarMerek = $pdo->query('SELECT * FROM merek ORDER BY nama_merek')->fetchAll(
 $daftarLokasi = $pdo->query('SELECT * FROM lokasi ORDER BY nama_ruangan')->fetchAll();
 $daftarPeralatan = $pdo->query('SELECT * FROM nama_peralatan ORDER BY nama_peralatan')->fetchAll();
 
-// Subkategori awal (jika mode edit / kategori sudah pernah dipilih)
 $daftarSubkategoriAwal = [];
 if ($data['kategori_id']) {
     $stmt = $pdo->prepare('SELECT id, nama_subkategori FROM subkategori WHERE kategori_id = ? ORDER BY nama_subkategori');
@@ -52,7 +51,7 @@ require_once __DIR__ . '/../includes/header.php';
 <?php else: ?>
 
 <div class="card p-4">
-  <form method="post" action="simpan.php">
+  <form method="post" action="simpan.php" id="formBarang">
     <input type="hidden" name="id" value="<?= amankan($idBarang) ?>">
 
     <?php if ($modeEdit): ?>
@@ -118,19 +117,45 @@ require_once __DIR__ . '/../includes/header.php';
         </select>
       </div>
 
+      <?php if (!$modeEdit): ?>
       <div class="col-md-4">
+        <label class="form-label">Jumlah Barang</label>
+        <input type="number" name="jumlah_barang" id="jumlahBarang" class="form-control" value="1" min="1" max="100" required>
+        <div class="form-text">Barang sejenis (kategori/merek/lokasi sama) yang masuk sekaligus.</div>
+      </div>
+      <?php endif; ?>
+
+      <div class="col-md-4" id="wrapKondisiSeragam">
         <label class="form-label">Kondisi Barang</label>
-        <select name="kondisi" class="form-select" required>
+        <select name="kondisi" id="selKondisiSeragam" class="form-select" required>
           <?php foreach (['Baik', 'Rusak', 'Sedang Diperbaiki'] as $k): ?>
             <option value="<?= $k ?>" <?= $data['kondisi'] === $k ? 'selected' : '' ?>><?= $k ?></option>
           <?php endforeach; ?>
         </select>
+        <?php if (!$modeEdit): ?>
+          <div class="form-text">
+            <a href="#" id="linkPerUnit" class="d-none">Kondisinya berbeda-beda? Atur per barang</a>
+          </div>
+        <?php endif; ?>
       </div>
 
-      <div class="col-md-6">
+      <div class="col-md-6" id="wrapNomorInventarisTunggal">
         <label class="form-label">Nomor Inventaris Kantor <span class="text-muted">(opsional)</span></label>
         <input type="text" name="nomor_inventaris_kantor" class="form-control" value="<?= amankan($data['nomor_inventaris_kantor']) ?>" placeholder="Kosongkan jika barang bukan aset resmi kantor">
       </div>
+
+      <?php if (!$modeEdit): ?>
+      <div class="col-12 d-none" id="wrapKondisiPerUnit">
+        <label class="form-label">Kondisi & Nomor Inventaris per Barang</label>
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr><th width="20%">Barang</th><th width="40%">Kondisi</th><th width="40%">No. Inventaris (opsional)</th></tr>
+          </thead>
+          <tbody id="bodyKondisiPerUnit"></tbody>
+        </table>
+        <a href="#" id="linkKembaliSeragam" class="form-text">&larr; Pakai kondisi yang sama untuk semua</a>
+      </div>
+      <?php endif; ?>
 
       <div class="col-12">
         <label class="form-label">Spesifikasi Barang</label>
@@ -146,10 +171,6 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
-// -------------------------------------------------------------
-// DROPDOWN BERTINGKAT (Cascading): saat Kategori berubah, ambil
-// ulang daftar Subkategori yang sesuai lewat get_subkategori.php
-// -------------------------------------------------------------
 const selKategori = document.getElementById('selKategori');
 const selSubkategori = document.getElementById('selSubkategori');
 
@@ -172,6 +193,66 @@ if (selKategori && !selKategori.disabled) {
           selSubkategori.appendChild(opt);
         });
       });
+  });
+}
+
+// -------------------------------------------------------------
+// JUMLAH BARANG > 1 : tampilkan opsi atur kondisi per barang
+// -------------------------------------------------------------
+const jumlahInput = document.getElementById('jumlahBarang');
+const linkPerUnit = document.getElementById('linkPerUnit');
+const linkKembaliSeragam = document.getElementById('linkKembaliSeragam');
+const wrapSeragam = document.getElementById('wrapKondisiSeragam');
+const wrapNomorTunggal = document.getElementById('wrapNomorInventarisTunggal');
+const wrapPerUnit = document.getElementById('wrapKondisiPerUnit');
+const bodyPerUnit = document.getElementById('bodyKondisiPerUnit');
+
+function renderBarisPerUnit() {
+  const jumlah = parseInt(jumlahInput.value) || 1;
+  bodyPerUnit.innerHTML = '';
+  for (let i = 1; i <= jumlah; i++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>Barang #${i}</td>
+      <td>
+        <select name="kondisi_unit[]" class="form-select form-select-sm" required>
+          <option value="Baik">Baik</option>
+          <option value="Rusak">Rusak</option>
+          <option value="Sedang Diperbaiki">Sedang Diperbaiki</option>
+        </select>
+      </td>
+      <td><input type="text" name="nomor_inventaris_unit[]" class="form-control form-control-sm" placeholder="Opsional"></td>
+    `;
+    bodyPerUnit.appendChild(tr);
+  }
+}
+
+if (jumlahInput) {
+  jumlahInput.addEventListener('input', function () {
+    const jumlah = parseInt(this.value) || 1;
+    linkPerUnit.classList.toggle('d-none', jumlah <= 1);
+    if (jumlah <= 1) {
+      wrapPerUnit.classList.add('d-none');
+      wrapSeragam.classList.remove('d-none');
+      wrapNomorTunggal.classList.remove('d-none');
+    } else if (!wrapPerUnit.classList.contains('d-none')) {
+      renderBarisPerUnit();
+    }
+  });
+
+  linkPerUnit.addEventListener('click', function (e) {
+    e.preventDefault();
+    renderBarisPerUnit();
+    wrapPerUnit.classList.remove('d-none');
+    wrapSeragam.classList.add('d-none');
+    wrapNomorTunggal.classList.add('d-none');
+  });
+
+  linkKembaliSeragam.addEventListener('click', function (e) {
+    e.preventDefault();
+    wrapPerUnit.classList.add('d-none');
+    wrapSeragam.classList.remove('d-none');
+    wrapNomorTunggal.classList.remove('d-none');
   });
 }
 </script>
