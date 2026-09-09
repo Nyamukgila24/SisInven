@@ -3,11 +3,13 @@ require_once __DIR__ . '/../includes/functions.php';
 wajibLogin();
 $pdo = getKoneksi();
 
-// Filter yang dipakai bersama oleh tampilan, ekspor Excel, dan ekspor PDF
 $kondisi = $_GET['kondisi'] ?? '';
-$statusAset = $_GET['status_aset'] ?? ''; // 'ada' | 'tanpa' | ''
+$statusAset = $_GET['status_aset'] ?? '';
+$halaman = max(1, (int) ($_GET['halaman'] ?? 1));
+$perHalaman = 10;
 
-$hasil = ambilDataLaporan($pdo, $kondisi, $statusAset);
+$totalData = hitungDataLaporan($pdo, $kondisi, $statusAset);
+$hasil = ambilDataLaporan($pdo, $kondisi, $statusAset, $halaman, $perHalaman);
 
 $queryString = http_build_query(['kondisi' => $kondisi, 'status_aset' => $statusAset]);
 
@@ -16,7 +18,7 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <h5 class="mb-1">Laporan & Ekspor Data</h5>
-<p class="text-muted small">Saring data sesuai kebutuhan, lalu ekspor ke Excel (.csv) atau PDF (cetak lewat browser).</p>
+<p class="text-muted small">Saring data sesuai kebutuhan, lalu ekspor ke Excel (.csv) atau PDF (cetak lewat browser). Ekspor tetap mencakup semua data sesuai filter, bukan hanya halaman yang sedang dilihat.</p>
 
 <div class="card p-3 mb-3">
   <form method="get" class="row g-2 align-items-end">
@@ -80,7 +82,8 @@ require_once __DIR__ . '/../includes/header.php';
       </tbody>
     </table>
   </div>
-  <p class="text-muted small mt-2 mb-0">Total data sesuai filter: <?= count($hasil) ?> barang.</p>
+  <p class="text-muted small mt-2 mb-0">Total data sesuai filter: <?= $totalData ?> barang.</p>
+  <?php renderPaginasi($halaman, $totalData, $perHalaman, ['kondisi' => $kondisi, 'status_aset' => $statusAset]); ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -141,7 +141,7 @@ function masterMasihDipakai($pdo, $kolom, $id) {
  * inventaris kantor. Dipakai bersama oleh laporan/index.php,
  * export_excel.php, dan export_pdf.php supaya hasilnya selalu sama.
  */
-function ambilDataLaporan($pdo, $kondisi = '', $statusAset = '') {
+function ambilDataLaporan($pdo, $kondisi = '', $statusAset = '', $halaman = null, $perHalaman = 10) {
     $sql = 'SELECT b.kode_barang, np.nama_peralatan, k.nama_kategori, s.nama_subkategori, m.nama_merek,
                    l.nama_ruangan, b.spesifikasi, b.nomor_inventaris_kantor, b.kondisi,
                    b.user_last_edit, b.timestamp_last_edit
@@ -165,9 +165,54 @@ function ambilDataLaporan($pdo, $kondisi = '', $statusAset = '') {
     }
     $sql .= ' ORDER BY b.kode_barang';
 
+    if ($halaman !== null) {
+        $sql .= ' LIMIT ' . (int) $perHalaman . ' OFFSET ' . (int) (($halaman - 1) * $perHalaman);
+    }
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll();
+}
+
+/**
+ * Menghitung total data laporan (dengan filter yang sama), dipakai
+ * untuk menentukan jumlah halaman pagination.
+ */
+function hitungDataLaporan($pdo, $kondisi = '', $statusAset = '') {
+    $sql = 'SELECT COUNT(*) FROM barang b WHERE 1=1';
+    $params = [];
+    if ($kondisi !== '') {
+        $sql .= ' AND b.kondisi = ?';
+        $params[] = $kondisi;
+    }
+    if ($statusAset === 'ada') {
+        $sql .= ' AND b.nomor_inventaris_kantor IS NOT NULL AND b.nomor_inventaris_kantor <> ""';
+    } elseif ($statusAset === 'tanpa') {
+        $sql .= ' AND (b.nomor_inventaris_kantor IS NULL OR b.nomor_inventaris_kantor = "")';
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return (int) $stmt->fetchColumn();
+}
+
+/**
+ * Menampilkan navigasi pagination Bootstrap. Dipakai bersama oleh
+ * barang/index.php dan laporan/index.php.
+ * $paramsLain = filter/pencarian yang sedang aktif (selain 'halaman'),
+ * supaya saat pindah halaman filter-nya tidak hilang.
+ */
+function renderPaginasi($halamanSekarang, $totalData, $perHalaman, $paramsLain = []) {
+    $totalHalaman = (int) ceil($totalData / $perHalaman);
+    if ($totalHalaman <= 1) return;
+
+    $paramsLain = array_filter($paramsLain, fn($v) => $v !== '');
+    echo '<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center mb-0">';
+    for ($i = 1; $i <= $totalHalaman; $i++) {
+        $query = http_build_query(array_merge($paramsLain, ['halaman' => $i]));
+        $aktif = $i === $halamanSekarang ? ' active' : '';
+        echo "<li class=\"page-item{$aktif}\"><a class=\"page-link\" href=\"?{$query}\">{$i}</a></li>";
+    }
+    echo '</ul></nav>';
 }
 
 /**

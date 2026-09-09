@@ -3,15 +3,12 @@ require_once __DIR__ . '/../includes/functions.php';
 wajibLogin();
 $pdo = getKoneksi();
 
-// -----------------------------------------------------------------
-// PENCARIAN & FILTER sederhana (bukan laporan resmi - untuk laporan
-// resmi/ekspor, lihat menu Laporan)
-// -----------------------------------------------------------------
 $cari = trim($_GET['cari'] ?? '');
 $filterKondisi = $_GET['kondisi'] ?? '';
+$halaman = max(1, (int) ($_GET['halaman'] ?? 1));
+$perHalaman = 10;
 
-$sql = 'SELECT b.*, k.nama_kategori, s.nama_subkategori, m.nama_merek, l.nama_ruangan, np.nama_peralatan
-        FROM barang b
+$sqlDasar = 'FROM barang b
         JOIN kategori k ON k.id = b.kategori_id
         JOIN subkategori s ON s.id = b.subkategori_id
         JOIN merek m ON m.id = b.merek_id
@@ -21,15 +18,22 @@ $sql = 'SELECT b.*, k.nama_kategori, s.nama_subkategori, m.nama_merek, l.nama_ru
 $params = [];
 
 if ($cari !== '') {
-    $sql .= ' AND (b.kode_barang LIKE ? OR np.nama_peralatan LIKE ? OR b.spesifikasi LIKE ? OR b.nomor_inventaris_kantor LIKE ?)';
+    $sqlDasar .= ' AND (b.kode_barang LIKE ? OR np.nama_peralatan LIKE ? OR b.spesifikasi LIKE ? OR b.nomor_inventaris_kantor LIKE ?)';
     $like = "%{$cari}%";
     array_push($params, $like, $like, $like, $like);
 }
 if ($filterKondisi !== '') {
-    $sql .= ' AND b.kondisi = ?';
+    $sqlDasar .= ' AND b.kondisi = ?';
     $params[] = $filterKondisi;
 }
-$sql .= ' ORDER BY b.id DESC';
+
+$stmtTotal = $pdo->prepare('SELECT COUNT(*) ' . $sqlDasar);
+$stmtTotal->execute($params);
+$totalData = (int) $stmtTotal->fetchColumn();
+
+$offset = ($halaman - 1) * $perHalaman;
+$sql = 'SELECT b.*, k.nama_kategori, s.nama_subkategori, m.nama_merek, l.nama_ruangan, np.nama_peralatan '
+     . $sqlDasar . ' ORDER BY b.id DESC LIMIT ' . $perHalaman . ' OFFSET ' . $offset;
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -109,6 +113,8 @@ require_once __DIR__ . '/../includes/header.php';
       </tbody>
     </table>
   </div>
+  <p class="text-muted small mt-2 mb-0">Total data sesuai filter: <?= $totalData ?> barang.</p>
+  <?php renderPaginasi($halaman, $totalData, $perHalaman, ['cari' => $cari, 'kondisi' => $filterKondisi]); ?>
 </div>
 
 <form method="post" action="hapus.php" id="formHapus" class="d-none">
