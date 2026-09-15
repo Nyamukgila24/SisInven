@@ -30,10 +30,6 @@ body {
     color: var(--sisinven-primary);
 }
 
-.badge-baik { background-color: #198754; }
-.badge-rusak { background-color: #dc3545; }
-.badge-diperbaiki { background-color: #fd7e14; }
-
 .kode-barang {
     font-family: 'Consolas', monospace;
     font-weight: 700;
@@ -53,10 +49,6 @@ body {
     max-width: 400px;
     width: 100%;
 }
-
-/* =====================================================================
-   LAPORAN PDF (halaman cetak export_pdf.php)
-   ===================================================================== */
 
 .kop-surat {
     position: relative;
@@ -140,9 +132,6 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
-.badge-kondisi.bagus { background-color: #198754 !important; }
-.badge-kondisi.rusak { background-color: #dc3545 !important; }
-.badge-kondisi.diperbaiki { background-color: #fd7e14 !important; }
 
 .total-data {
     text-align: right;

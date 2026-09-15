@@ -1,12 +1,4 @@
 <?php
-/**
- * =====================================================================
- * KUMPULAN FUNGSI BANTU
- * =====================================================================
- * Semua "logika inti" aplikasi dikumpulkan di sini supaya mudah dicari
- * dan dijelaskan. Setiap fungsi punya penjelasan singkat di atasnya.
- * =====================================================================
- */
 
 require_once __DIR__ . '/../config/database.php';
 
@@ -61,20 +53,6 @@ function catatJejakPerubahan() {
     return [$_SESSION['nama_lengkap'] ?? 'Tidak diketahui', date('Y-m-d H:i:s')];
 }
 
-/**
- * ---------------------------------------------------------------
- * INTI ATURAN PENGODEAN BARANG (lihat FRD bagian 3.2)
- * ---------------------------------------------------------------
- * Format kode: [Kode Kategori].[Kode Subkategori].[Kode Peralatan].[No Urut]
- * Nomor urut dihitung otomatis: barang ke berapa untuk kombinasi
- * kategori + subkategori + peralatan yang SAMA.
- *
- * Fungsi ini TIDAK boleh dipanggil dua kali untuk barang yang sama,
- * dan harus dijalankan tepat sebelum INSERT supaya nomor urutnya
- * tidak bentrok (lihat barang/simpan.php yang membungkusnya
- * dengan transaction + lock).
- * ---------------------------------------------------------------
- */
 function generateKodeBarang($pdo, $kategoriId, $subkategoriId, $peralatanId) {
     // Ambil kode dari masing-masing tabel master
     $stmt = $pdo->prepare('SELECT kode_kategori FROM kategori WHERE id = ?');
@@ -141,9 +119,9 @@ function masterMasihDipakai($pdo, $kolom, $id) {
  * inventaris kantor. Dipakai bersama oleh laporan/index.php,
  * export_excel.php, dan export_pdf.php supaya hasilnya selalu sama.
  */
-function ambilDataLaporan($pdo, $kondisi = '', $statusAset = '', $halaman = null, $perHalaman = 10) {
+function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $halaman = null, $perHalaman = 10) {
     $sql = 'SELECT b.kode_barang, np.nama_peralatan, k.nama_kategori, s.nama_subkategori, m.nama_merek,
-                   l.nama_ruangan, b.spesifikasi, b.nomor_inventaris_kantor, b.kondisi,
+                   l.nama_ruangan, b.spesifikasi, b.nomor_inventaris_kantor, kb.nama_kondisi AS kondisi, kb.kode_warna,
                    b.user_last_edit, b.timestamp_last_edit
             FROM barang b
             JOIN kategori k ON k.id = b.kategori_id
@@ -151,12 +129,13 @@ function ambilDataLaporan($pdo, $kondisi = '', $statusAset = '', $halaman = null
             JOIN merek m ON m.id = b.merek_id
             JOIN lokasi l ON l.id = b.lokasi_id
             JOIN nama_peralatan np ON np.id = b.nama_peralatan_id
+            JOIN kondisi_barang kb ON kb.id = b.kondisi_id
             WHERE 1=1';
     $params = [];
 
-    if ($kondisi !== '') {
-        $sql .= ' AND b.kondisi = ?';
-        $params[] = $kondisi;
+    if ($kondisiId !== '') {
+        $sql .= ' AND b.kondisi_id = ?';
+        $params[] = $kondisiId;
     }
     if ($statusAset === 'ada') {
         $sql .= ' AND b.nomor_inventaris_kantor IS NOT NULL AND b.nomor_inventaris_kantor <> ""';
@@ -178,12 +157,12 @@ function ambilDataLaporan($pdo, $kondisi = '', $statusAset = '', $halaman = null
  * Menghitung total data laporan (dengan filter yang sama), dipakai
  * untuk menentukan jumlah halaman pagination.
  */
-function hitungDataLaporan($pdo, $kondisi = '', $statusAset = '') {
+function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '') {
     $sql = 'SELECT COUNT(*) FROM barang b WHERE 1=1';
     $params = [];
-    if ($kondisi !== '') {
-        $sql .= ' AND b.kondisi = ?';
-        $params[] = $kondisi;
+    if ($kondisiId !== '') {
+        $sql .= ' AND b.kondisi_id = ?';
+        $params[] = $kondisiId;
     }
     if ($statusAset === 'ada') {
         $sql .= ' AND b.nomor_inventaris_kantor IS NOT NULL AND b.nomor_inventaris_kantor <> ""';
@@ -195,15 +174,10 @@ function hitungDataLaporan($pdo, $kondisi = '', $statusAset = '') {
     return (int) $stmt->fetchColumn();
 }
 
-/**
- * Menampilkan navigasi pagination Bootstrap. Dipakai bersama oleh
- * barang/index.php dan laporan/index.php.
- * $paramsLain = filter/pencarian yang sedang aktif (selain 'halaman'),
- * supaya saat pindah halaman filter-nya tidak hilang.
- */
 function renderPaginasi($halamanSekarang, $totalData, $perHalaman, $paramsLain = []) {
     $totalHalaman = (int) ceil($totalData / $perHalaman);
-    if ($totalHalaman <= 1) return;
+    if ($totalHalaman <= 1) 
+        return;
 
     $paramsLain = array_filter($paramsLain, fn($v) => $v !== '');
     echo '<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center mb-0">';
@@ -215,10 +189,6 @@ function renderPaginasi($halamanSekarang, $totalData, $perHalaman, $paramsLain =
     echo '</ul></nav>';
 }
 
-/**
- * Pesan flash sederhana (notifikasi sukses/gagal) yang bertahan
- * satu kali pindah halaman saja, dipakai lewat session.
- */
 function setFlash($tipe, $pesan) {
     $_SESSION['flash'] = ['tipe' => $tipe, 'pesan' => $pesan];
 }

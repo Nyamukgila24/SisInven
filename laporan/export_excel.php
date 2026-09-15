@@ -1,13 +1,4 @@
 <?php
-/**
- * EKSPOR KE EXCEL
- * -------------------------------------------------------------
- * Diekspor sebagai file .csv (Comma Separated Values). File ini
- * bisa langsung dibuka oleh Microsoft Excel maupun Google Sheets
- * tanpa perlu instalasi library PHP tambahan (seperti PhpSpreadsheet),
- * sehingga aplikasi tetap ringan dan mudah dipasang di server mana pun.
- * -------------------------------------------------------------
- */
 require_once __DIR__ . '/../includes/functions.php';
 wajibLogin();
 $pdo = getKoneksi();

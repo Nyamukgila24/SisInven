@@ -10,6 +10,7 @@ $perHalaman = 10;
 
 $totalData = hitungDataLaporan($pdo, $kondisi, $statusAset);
 $hasil = ambilDataLaporan($pdo, $kondisi, $statusAset, $halaman, $perHalaman);
+$daftarKondisi = $pdo->query('SELECT * FROM kondisi_barang ORDER BY id')->fetchAll();
 
 $queryString = http_build_query(['kondisi' => $kondisi, 'status_aset' => $statusAset]);
 
@@ -26,8 +27,8 @@ require_once __DIR__ . '/../includes/header.php';
       <label class="form-label small mb-1">Laporan Berdasarkan Kondisi Barang</label>
       <select name="kondisi" class="form-select">
         <option value="">Semua Kondisi</option>
-        <?php foreach (['Baik', 'Rusak', 'Sedang Diperbaiki'] as $k): ?>
-          <option value="<?= $k ?>" <?= $kondisi === $k ? 'selected' : '' ?>><?= $k ?></option>
+        <?php foreach ($daftarKondisi as $kb): ?>
+          <option value="<?= $kb['id'] ?>" <?= $kondisi == $kb['id'] ? 'selected' : '' ?>><?= amankan($kb['nama_kondisi']) ?></option>
         <?php endforeach; ?>
       </select>
     </div>

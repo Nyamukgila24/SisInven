@@ -14,14 +14,6 @@ if ($statusAset === 'ada') $judulFilter[] = 'Punya Nomor Inventaris Kantor';
 if ($statusAset === 'tanpa') $judulFilter[] = 'Tanpa Nomor Inventaris Kantor';
 $keteranganFilter = $judulFilter ? implode(' | ', $judulFilter) : 'Semua Data';
 
-function getBadgeClass($kondisi) {
-    $map = [
-        'Baik' => 'bagus',
-        'Rusak' => 'rusak',
-        'Sedang Diperbaiki' => 'diperbaiki'
-    ];
-    return $map[$kondisi] ?? '';
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -81,7 +73,7 @@ function getBadgeClass($kondisi) {
                 <td><?= amankan($row['nama_ruangan']) ?></td>
                 <td class="text-center"><?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '-' ?></td>
                 <td class="text-center">
-                    <span class="badge-kondisi <?= getBadgeClass($row['kondisi']) ?>">
+                    <span class="badge-kondisi" style="background-color: <?= amankan($row['kode_warna']) ?>">
                         <?= amankan($row['kondisi']) ?>
                     </span>
                 </td>

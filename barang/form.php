@@ -6,7 +6,7 @@ $pdo = getKoneksi();
 $idBarang = $_GET['id'] ?? null;
 $data = [
     'kategori_id' => '', 'subkategori_id' => '', 'merek_id' => '', 'lokasi_id' => '',
-    'nama_peralatan_id' => '', 'spesifikasi' => '', 'nomor_inventaris_kantor' => '', 'kondisi' => 'Baik',
+    'nama_peralatan_id' => '', 'spesifikasi' => '', 'nomor_inventaris_kantor' => '', 'kondisi_id' => '',
 ];
 $modeEdit = false;
 
@@ -27,6 +27,7 @@ $daftarKategori = $pdo->query('SELECT * FROM kategori ORDER BY nama_kategori')->
 $daftarMerek = $pdo->query('SELECT * FROM merek ORDER BY nama_merek')->fetchAll();
 $daftarLokasi = $pdo->query('SELECT * FROM lokasi ORDER BY nama_ruangan')->fetchAll();
 $daftarPeralatan = $pdo->query('SELECT * FROM nama_peralatan ORDER BY nama_peralatan')->fetchAll();
+$daftarKondisi = $pdo->query('SELECT * FROM kondisi_barang ORDER BY id')->fetchAll();
 
 $daftarSubkategoriAwal = [];
 if ($data['kategori_id']) {
@@ -35,7 +36,7 @@ if ($data['kategori_id']) {
     $daftarSubkategoriAwal = $stmt->fetchAll();
 }
 
-$dataMasterKosong = !$daftarKategori || !$daftarMerek || !$daftarLokasi || !$daftarPeralatan;
+$dataMasterKosong = !$daftarKategori || !$daftarMerek || !$daftarLokasi || !$daftarPeralatan || !$daftarKondisi;
 
 $judulHalaman = $modeEdit ? 'Ubah Barang' : 'Tambah Barang';
 require_once __DIR__ . '/../includes/header.php';
@@ -45,7 +46,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <?php if ($dataMasterKosong): ?>
   <div class="alert alert-warning">
-    Data master (Kategori/Subkategori/Merek/Lokasi/Nama Peralatan) belum lengkap.
+    Data master (Kategori/Subkategori/Merek/Lokasi/Nama Peralatan/Kondisi) belum lengkap.
     Silakan lengkapi dulu lewat menu <a href="../master/kategori.php">Data Master</a> sebelum menambah barang.
   </div>
 <?php else: ?>
@@ -127,9 +128,9 @@ require_once __DIR__ . '/../includes/header.php';
 
       <div class="col-md-4" id="wrapKondisiSeragam">
         <label class="form-label">Kondisi Barang</label>
-        <select name="kondisi" id="selKondisiSeragam" class="form-select" required>
-          <?php foreach (['Baik', 'Rusak', 'Sedang Diperbaiki'] as $k): ?>
-            <option value="<?= $k ?>" <?= $data['kondisi'] === $k ? 'selected' : '' ?>><?= $k ?></option>
+        <select name="kondisi_id" id="selKondisiSeragam" class="form-select" required>
+          <?php foreach ($daftarKondisi as $kb): ?>
+            <option value="<?= $kb['id'] ?>" <?= $data['kondisi_id'] == $kb['id'] ? 'selected' : '' ?>><?= amankan($kb['nama_kondisi']) ?></option>
           <?php endforeach; ?>
         </select>
         <?php if (!$modeEdit): ?>
@@ -196,9 +197,8 @@ if (selKategori && !selKategori.disabled) {
   });
 }
 
-// -------------------------------------------------------------
-// JUMLAH BARANG > 1 : tampilkan opsi atur kondisi per barang
-// -------------------------------------------------------------
+const daftarKondisiJs = <?= json_encode($daftarKondisi) ?>;
+
 const jumlahInput = document.getElementById('jumlahBarang');
 const linkPerUnit = document.getElementById('linkPerUnit');
 const linkKembaliSeragam = document.getElementById('linkKembaliSeragam');
@@ -206,6 +206,10 @@ const wrapSeragam = document.getElementById('wrapKondisiSeragam');
 const wrapNomorTunggal = document.getElementById('wrapNomorInventarisTunggal');
 const wrapPerUnit = document.getElementById('wrapKondisiPerUnit');
 const bodyPerUnit = document.getElementById('bodyKondisiPerUnit');
+
+function opsiKondisiHtml() {
+  return daftarKondisiJs.map(k => `<option value="${k.id}">${k.nama_kondisi}</option>`).join('');
+}
 
 function renderBarisPerUnit() {
   const jumlah = parseInt(jumlahInput.value) || 1;
@@ -216,9 +220,7 @@ function renderBarisPerUnit() {
       <td>Barang #${i}</td>
       <td>
         <select name="kondisi_unit[]" class="form-select form-select-sm" required>
-          <option value="Baik">Baik</option>
-          <option value="Rusak">Rusak</option>
-          <option value="Sedang Diperbaiki">Sedang Diperbaiki</option>
+          ${opsiKondisiHtml()}
         </select>
       </td>
       <td><input type="text" name="nomor_inventaris_unit[]" class="form-control form-control-sm" placeholder="Opsional"></td>

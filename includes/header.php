@@ -51,6 +51,7 @@ $flash = ambilFlash();
             <li><a class="dropdown-item" href="<?= $base ?>/master/merek.php">Merek</a></li>
             <li><a class="dropdown-item" href="<?= $base ?>/master/lokasi.php">Lokasi / Ruangan</a></li>
             <li><a class="dropdown-item" href="<?= $base ?>/master/peralatan.php">Nama Peralatan</a></li>
+            <li><a class="dropdown-item" href="<?= $base ?>/master/kondisi.php">Kondisi</a></li>
           </ul>
         </li>
         <li class="nav-item">

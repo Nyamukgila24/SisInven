@@ -16,13 +16,14 @@ $peralatanId = $_POST['nama_peralatan_id'] ?? '';
 $merekId = $_POST['merek_id'] ?? '';
 $lokasiId = $_POST['lokasi_id'] ?? '';
 $spesifikasi = trim($_POST['spesifikasi'] ?? '');
-$kondisiValid = ['Baik', 'Rusak', 'Sedang Diperbaiki'];
 
 if (!$kategoriId || !$subkategoriId || !$peralatanId || !$merekId || !$lokasiId || $spesifikasi === '') {
     setFlash('gagal', 'Semua kolom wajib harus diisi dengan benar.');
     header('Location: ' . ($id ? "form.php?id={$id}" : 'form.php'));
     exit;
 }
+
+$daftarKondisiValid = $pdo->query('SELECT id FROM kondisi_barang')->fetchAll(PDO::FETCH_COLUMN);
 
 [$namaPengguna, $waktuSekarang] = catatJejakPerubahan();
 
@@ -31,40 +32,38 @@ try {
 
     if ($id) {
         // ---- MODE EDIT (satu barang) ----
-        $kondisi = $_POST['kondisi'] ?? 'Baik';
+        $kondisiId = $_POST['kondisi_id'] ?? '';
         $nomorInventaris = trim($_POST['nomor_inventaris_kantor'] ?? '');
         $nomorInventaris = $nomorInventaris === '' ? null : $nomorInventaris;
 
-        if (!in_array($kondisi, $kondisiValid, true)) {
+        if (!in_array($kondisiId, $daftarKondisiValid)) {
             throw new Exception('Kondisi barang tidak valid.');
         }
 
         $stmt = $pdo->prepare(
             'UPDATE barang SET merek_id=?, lokasi_id=?, spesifikasi=?, nomor_inventaris_kantor=?,
-             kondisi=?, user_last_edit=?, timestamp_last_edit=? WHERE id=?'
+             kondisi_id=?, user_last_edit=?, timestamp_last_edit=? WHERE id=?'
         );
-        $stmt->execute([$merekId, $lokasiId, $spesifikasi, $nomorInventaris, $kondisi, $namaPengguna, $waktuSekarang, $id]);
+        $stmt->execute([$merekId, $lokasiId, $spesifikasi, $nomorInventaris, $kondisiId, $namaPengguna, $waktuSekarang, $id]);
         $pesan = 'Data barang berhasil diperbarui.';
     } else {
         // ---- MODE TAMBAH BARU (bisa lebih dari 1 sekaligus) ----
         $jumlahBarang = max(1, min(100, (int) ($_POST['jumlah_barang'] ?? 1)));
 
         if (!empty($_POST['kondisi_unit']) && is_array($_POST['kondisi_unit'])) {
-            // Mode per-unit: kondisi & no. inventaris beda-beda tiap barang
-            $daftarKondisi = $_POST['kondisi_unit'];
+            $daftarKondisiBaris = $_POST['kondisi_unit'];
             $daftarNomorInventaris = $_POST['nomor_inventaris_unit'] ?? [];
         } else {
-            // Mode seragam: kondisi sama untuk semua barang yang ditambah
-            $kondisiTunggal = $_POST['kondisi'] ?? 'Baik';
+            $kondisiTunggal = $_POST['kondisi_id'] ?? '';
             $nomorInventarisTunggal = trim($_POST['nomor_inventaris_kantor'] ?? '');
-            $daftarKondisi = array_fill(0, $jumlahBarang, $kondisiTunggal);
+            $daftarKondisiBaris = array_fill(0, $jumlahBarang, $kondisiTunggal);
             $daftarNomorInventaris = array_fill(0, $jumlahBarang, $nomorInventarisTunggal);
         }
 
         $daftarKodeBarang = [];
 
-        foreach ($daftarKondisi as $i => $kondisiBaris) {
-            if (!in_array($kondisiBaris, $kondisiValid, true)) {
+        foreach ($daftarKondisiBaris as $i => $kondisiIdBaris) {
+            if (!in_array($kondisiIdBaris, $daftarKondisiValid)) {
                 throw new Exception('Ada kondisi barang yang tidak valid.');
             }
             $nomorInventarisBaris = trim($daftarNomorInventaris[$i] ?? '');
@@ -75,12 +74,12 @@ try {
             $stmt = $pdo->prepare(
                 'INSERT INTO barang
                  (kode_barang, kategori_id, subkategori_id, merek_id, lokasi_id, nama_peralatan_id, nomor_urut,
-                  spesifikasi, nomor_inventaris_kantor, kondisi, user_last_edit, timestamp_last_edit)
+                  spesifikasi, nomor_inventaris_kantor, kondisi_id, user_last_edit, timestamp_last_edit)
                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
             );
             $stmt->execute([
                 $kodeBarang, $kategoriId, $subkategoriId, $merekId, $lokasiId, $peralatanId, $nomorUrut,
-                $spesifikasi, $nomorInventarisBaris, $kondisiBaris, $namaPengguna, $waktuSekarang,
+                $spesifikasi, $nomorInventarisBaris, $kondisiIdBaris, $namaPengguna, $waktuSekarang,
             ]);
             $daftarKodeBarang[] = $kodeBarang;
         }

@@ -14,6 +14,7 @@ $sqlDasar = 'FROM barang b
         JOIN merek m ON m.id = b.merek_id
         JOIN lokasi l ON l.id = b.lokasi_id
         JOIN nama_peralatan np ON np.id = b.nama_peralatan_id
+        JOIN kondisi_barang kb ON kb.id = b.kondisi_id
         WHERE 1=1';
 $params = [];
 
@@ -23,7 +24,7 @@ if ($cari !== '') {
     array_push($params, $like, $like, $like, $like);
 }
 if ($filterKondisi !== '') {
-    $sqlDasar .= ' AND b.kondisi = ?';
+    $sqlDasar .= ' AND b.kondisi_id = ?';
     $params[] = $filterKondisi;
 }
 
@@ -32,12 +33,15 @@ $stmtTotal->execute($params);
 $totalData = (int) $stmtTotal->fetchColumn();
 
 $offset = ($halaman - 1) * $perHalaman;
-$sql = 'SELECT b.*, k.nama_kategori, s.nama_subkategori, m.nama_merek, l.nama_ruangan, np.nama_peralatan '
+$sql = 'SELECT b.*, k.nama_kategori, s.nama_subkategori, m.nama_merek, l.nama_ruangan, np.nama_peralatan,
+               kb.nama_kondisi, kb.kode_warna '
      . $sqlDasar . ' ORDER BY b.id DESC LIMIT ' . $perHalaman . ' OFFSET ' . $offset;
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $daftar = $stmt->fetchAll();
+
+$daftarKondisi = $pdo->query('SELECT * FROM kondisi_barang ORDER BY id')->fetchAll();
 
 $judulHalaman = 'Data Barang';
 require_once __DIR__ . '/../includes/header.php';
@@ -61,8 +65,8 @@ require_once __DIR__ . '/../includes/header.php';
       <label class="form-label small mb-1">Kondisi</label>
       <select name="kondisi" class="form-select">
         <option value="">Semua Kondisi</option>
-        <?php foreach (['Baik', 'Rusak', 'Sedang Diperbaiki'] as $k): ?>
-          <option value="<?= $k ?>" <?= $filterKondisi === $k ? 'selected' : '' ?>><?= $k ?></option>
+        <?php foreach ($daftarKondisi as $kb): ?>
+          <option value="<?= $kb['id'] ?>" <?= $filterKondisi == $kb['id'] ? 'selected' : '' ?>><?= amankan($kb['nama_kondisi']) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -93,9 +97,6 @@ require_once __DIR__ . '/../includes/header.php';
         <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data barang yang cocok.</td></tr>
       <?php endif; ?>
       <?php foreach ($daftar as $row): ?>
-        <?php
-          $badgeClass = ['Baik' => 'badge-baik', 'Rusak' => 'badge-rusak', 'Sedang Diperbaiki' => 'badge-diperbaiki'][$row['kondisi']];
-        ?>
         <tr>
           <td class="kode-barang"><?= amankan($row['kode_barang']) ?></td>
           <td><?= amankan($row['nama_peralatan']) ?></td>
@@ -103,7 +104,7 @@ require_once __DIR__ . '/../includes/header.php';
           <td><?= amankan($row['nama_merek']) ?></td>
           <td><?= amankan($row['nama_ruangan']) ?></td>
           <td><?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '<span class="text-muted">-</span>' ?></td>
-          <td><span class="badge <?= $badgeClass ?>"><?= amankan($row['kondisi']) ?></span></td>
+          <td><span class="badge" style="background-color: <?= amankan($row['kode_warna']) ?>"><?= amankan($row['nama_kondisi']) ?></span></td>
           <td>
             <a href="form.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
             <button class="btn btn-sm btn-outline-danger" onclick="hapus(<?= $row['id'] ?>)"><i class="bi bi-trash"></i></button>
