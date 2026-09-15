@@ -12,20 +12,19 @@ $pdo = getKoneksi();
 $id = $_POST['id'] ?: null;
 $kategoriId = $_POST['kategori_id'] ?? '';
 $subkategoriId = $_POST['subkategori_id'] ?? '';
-$peralatanId = $_POST['nama_peralatan_id'] ?? '';
 $merekId = $_POST['merek_id'] ?? '';
 $lokasiId = $_POST['lokasi_id'] ?? '';
 $spesifikasi = trim($_POST['spesifikasi'] ?? '');
 
-if (!$kategoriId || !$subkategoriId || !$peralatanId || !$merekId || !$lokasiId || $spesifikasi === '') {
+if (!$kategoriId || !$subkategoriId || !$merekId || !$lokasiId || $spesifikasi === '') {
     setFlash('gagal', 'Semua kolom wajib harus diisi dengan benar.');
     header('Location: ' . ($id ? "form.php?id={$id}" : 'form.php'));
     exit;
 }
 
 $daftarKondisiValid = $pdo->query('SELECT id FROM kondisi_barang')->fetchAll(PDO::FETCH_COLUMN);
-
 [$namaPengguna, $waktuSekarang] = catatJejakPerubahan();
+$fotoBaru = simpanFotoPeralatan();
 
 try {
     $pdo->beginTransaction();
@@ -40,14 +39,28 @@ try {
             throw new Exception('Kondisi barang tidak valid.');
         }
 
-        $stmt = $pdo->prepare(
-            'UPDATE barang SET merek_id=?, lokasi_id=?, spesifikasi=?, nomor_inventaris_kantor=?,
-             kondisi_id=?, user_last_edit=?, timestamp_last_edit=? WHERE id=?'
-        );
-        $stmt->execute([$merekId, $lokasiId, $spesifikasi, $nomorInventaris, $kondisiId, $namaPengguna, $waktuSekarang, $id]);
+        if ($fotoBaru) {
+            $stmt = $pdo->prepare(
+                'UPDATE barang SET merek_id=?, lokasi_id=?, spesifikasi=?, nomor_inventaris_kantor=?,
+                 kondisi_id=?, foto_peralatan=?, user_last_edit=?, timestamp_last_edit=? WHERE id=?'
+            );
+            $stmt->execute([$merekId, $lokasiId, $spesifikasi, $nomorInventaris, $kondisiId, $fotoBaru, $namaPengguna, $waktuSekarang, $id]);
+        } else {
+            $stmt = $pdo->prepare(
+                'UPDATE barang SET merek_id=?, lokasi_id=?, spesifikasi=?, nomor_inventaris_kantor=?,
+                 kondisi_id=?, user_last_edit=?, timestamp_last_edit=? WHERE id=?'
+            );
+            $stmt->execute([$merekId, $lokasiId, $spesifikasi, $nomorInventaris, $kondisiId, $namaPengguna, $waktuSekarang, $id]);
+        }
         $pesan = 'Data barang berhasil diperbarui.';
     } else {
         // ---- MODE TAMBAH BARU (bisa lebih dari 1 sekaligus) ----
+        $namaPeralatanInput = trim($_POST['nama_peralatan'] ?? '');
+        if ($namaPeralatanInput === '') {
+            throw new Exception('Nama Peralatan wajib diisi.');
+        }
+        $peralatanId = cariAtauBuatPeralatan($pdo, $namaPeralatanInput);
+
         $jumlahBarang = max(1, min(100, (int) ($_POST['jumlah_barang'] ?? 1)));
 
         if (!empty($_POST['kondisi_unit']) && is_array($_POST['kondisi_unit'])) {
@@ -73,12 +86,12 @@ try {
 
             $stmt = $pdo->prepare(
                 'INSERT INTO barang
-                 (kode_barang, kategori_id, subkategori_id, merek_id, lokasi_id, nama_peralatan_id, nomor_urut,
+                 (kode_barang, kategori_id, subkategori_id, merek_id, lokasi_id, nama_peralatan_id, foto_peralatan, nomor_urut,
                   spesifikasi, nomor_inventaris_kantor, kondisi_id, user_last_edit, timestamp_last_edit)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
             );
             $stmt->execute([
-                $kodeBarang, $kategoriId, $subkategoriId, $merekId, $lokasiId, $peralatanId, $nomorUrut,
+                $kodeBarang, $kategoriId, $subkategoriId, $merekId, $lokasiId, $peralatanId, $fotoBaru, $nomorUrut,
                 $spesifikasi, $nomorInventarisBaris, $kondisiIdBaris, $namaPengguna, $waktuSekarang,
             ]);
             $daftarKodeBarang[] = $kodeBarang;

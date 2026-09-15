@@ -2,16 +2,23 @@
 require_once __DIR__ . '/../includes/functions.php';
 wajibLogin();
 $pdo = getKoneksi();
+$baseUrl = urlDasar();
 
 $idBarang = $_GET['id'] ?? null;
 $data = [
     'kategori_id' => '', 'subkategori_id' => '', 'merek_id' => '', 'lokasi_id' => '',
-    'nama_peralatan_id' => '', 'spesifikasi' => '', 'nomor_inventaris_kantor' => '', 'kondisi_id' => '',
+    'nama_peralatan_id' => '', 'nama_peralatan' => '', 'nama_merek' => '', 'foto_peralatan' => null,
+    'spesifikasi' => '', 'nomor_inventaris_kantor' => '', 'kondisi_id' => '',
 ];
 $modeEdit = false;
 
 if ($idBarang) {
-    $stmt = $pdo->prepare('SELECT * FROM barang WHERE id = ?');
+    $stmt = $pdo->prepare(
+        'SELECT b.*, m.nama_merek, np.nama_peralatan FROM barang b
+         JOIN merek m ON m.id = b.merek_id
+         JOIN nama_peralatan np ON np.id = b.nama_peralatan_id
+         WHERE b.id = ?'
+    );
     $stmt->execute([$idBarang]);
     $existing = $stmt->fetch();
     if (!$existing) {
@@ -26,7 +33,6 @@ if ($idBarang) {
 $daftarKategori = $pdo->query('SELECT * FROM kategori ORDER BY nama_kategori')->fetchAll();
 $daftarMerek = $pdo->query('SELECT * FROM merek ORDER BY nama_merek')->fetchAll();
 $daftarLokasi = $pdo->query('SELECT * FROM lokasi ORDER BY nama_ruangan')->fetchAll();
-$daftarPeralatan = $pdo->query('SELECT * FROM nama_peralatan ORDER BY nama_peralatan')->fetchAll();
 $daftarKondisi = $pdo->query('SELECT * FROM kondisi_barang ORDER BY id')->fetchAll();
 
 $daftarSubkategoriAwal = [];
@@ -36,9 +42,12 @@ if ($data['kategori_id']) {
     $daftarSubkategoriAwal = $stmt->fetchAll();
 }
 
-$dataMasterKosong = !$daftarKategori || !$daftarMerek || !$daftarLokasi || !$daftarPeralatan || !$daftarKondisi;
+$dataMasterKosong = !$daftarKategori || !$daftarMerek || !$daftarLokasi || !$daftarKondisi;
 
 $judulHalaman = $modeEdit ? 'Ubah Barang' : 'Tambah Barang';
+?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
+<?php
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -46,13 +55,13 @@ require_once __DIR__ . '/../includes/header.php';
 
 <?php if ($dataMasterKosong): ?>
   <div class="alert alert-warning">
-    Data master (Kategori/Subkategori/Merek/Lokasi/Nama Peralatan/Kondisi) belum lengkap.
+    Data master (Kategori/Subkategori/Merek/Lokasi/Kondisi) belum lengkap.
     Silakan lengkapi dulu lewat menu <a href="../master/kategori.php">Data Master</a> sebelum menambah barang.
   </div>
 <?php else: ?>
 
 <div class="card p-4">
-  <form method="post" action="simpan.php" id="formBarang">
+  <form method="post" action="simpan.php" id="formBarang" enctype="multipart/form-data">
     <input type="hidden" name="id" value="<?= amankan($idBarang) ?>">
 
     <?php if ($modeEdit): ?>
@@ -89,18 +98,24 @@ require_once __DIR__ . '/../includes/header.php';
 
       <div class="col-md-4">
         <label class="form-label">Nama Peralatan</label>
-        <select name="nama_peralatan_id" class="form-select" required <?= $modeEdit ? 'disabled' : '' ?>>
-          <option value="">-- Pilih Peralatan --</option>
-          <?php foreach ($daftarPeralatan as $p): ?>
-            <option value="<?= $p['id'] ?>" <?= $data['nama_peralatan_id'] == $p['id'] ? 'selected' : '' ?>><?= amankan($p['nama_peralatan']) ?></option>
-          <?php endforeach; ?>
-        </select>
-        <?php if ($modeEdit): ?><input type="hidden" name="nama_peralatan_id" value="<?= $data['nama_peralatan_id'] ?>"><?php endif; ?>
+        <?php if ($modeEdit): ?>
+          <input type="text" class="form-control" value="<?= amankan($data['nama_peralatan']) ?>" disabled>
+          <input type="hidden" name="nama_peralatan_id" value="<?= $data['nama_peralatan_id'] ?>">
+        <?php else: ?>
+          <input type="text" name="nama_peralatan" class="form-control" list="daftarPeralatanList" required
+                 placeholder="Ketik nama peralatan, contoh: Komputer">
+          <datalist id="daftarPeralatanList">
+            <?php foreach ($pdo->query('SELECT DISTINCT nama_peralatan FROM nama_peralatan ORDER BY nama_peralatan') as $p): ?>
+              <option value="<?= amankan($p['nama_peralatan']) ?>">
+            <?php endforeach; ?>
+          </datalist>
+          <div class="form-text">Ketik nama baru, atau pilih dari saran yang sudah pernah dipakai.</div>
+        <?php endif; ?>
       </div>
 
       <div class="col-md-4">
         <label class="form-label">Merek</label>
-        <select name="merek_id" class="form-select" required>
+        <select name="merek_id" id="selMerek" class="form-select" required>
           <option value="">-- Pilih Merek --</option>
           <?php foreach ($daftarMerek as $m): ?>
             <option value="<?= $m['id'] ?>" <?= $data['merek_id'] == $m['id'] ? 'selected' : '' ?>><?= amankan($m['nama_merek']) ?></option>
@@ -118,11 +133,24 @@ require_once __DIR__ . '/../includes/header.php';
         </select>
       </div>
 
+      <div class="col-md-4">
+        <label class="form-label">Foto Peralatan <span class="text-muted">(opsional)</span></label>
+        <?php if ($modeEdit && $data['foto_peralatan']): ?>
+          <div class="mb-2">
+            <img src="<?= $baseUrl ?>/uploads/peralatan/<?= amankan($data['foto_peralatan']) ?>" alt="Foto" style="max-width:90px;max-height:90px;border-radius:.5rem;object-fit:cover;">
+          </div>
+        <?php endif; ?>
+        <input type="file" name="foto_peralatan" class="form-control" accept="image/jpeg,image/png,image/webp">
+        <?php if ($modeEdit && $data['foto_peralatan']): ?>
+          <div class="form-text">Kosongkan jika tidak ingin mengganti foto.</div>
+        <?php endif; ?>
+      </div>
+
       <?php if (!$modeEdit): ?>
       <div class="col-md-4">
         <label class="form-label">Jumlah Barang</label>
         <input type="number" name="jumlah_barang" id="jumlahBarang" class="form-control" value="1" min="1" max="100" required>
-        <div class="form-text">Barang sejenis (kategori/merek/lokasi sama) yang masuk sekaligus.</div>
+        <div class="form-text">Barang sejenis (kategori/merek/lokasi/peralatan sama) yang masuk sekaligus. Foto berlaku sama untuk semua.</div>
       </div>
       <?php endif; ?>
 
@@ -171,6 +199,7 @@ require_once __DIR__ . '/../includes/header.php';
   </form>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
 <script>
 const selKategori = document.getElementById('selKategori');
 const selSubkategori = document.getElementById('selSubkategori');
@@ -197,8 +226,23 @@ if (selKategori && !selKategori.disabled) {
   });
 }
 
-const daftarKondisiJs = <?= json_encode($daftarKondisi) ?>;
+// -------------------------------------------------------------
+// DROPDOWN MEREK BISA DICARI (pakai Choices.js)
+// -------------------------------------------------------------
+if (document.querySelector('#selMerek')) {
+  new Choices('#selMerek', {
+    searchEnabled: true,
+    itemSelectText: '',
+    shouldSort: false,
+    placeholder: true,
+    placeholderValue: '-- Pilih Merek --',
+  });
+}
 
+// -------------------------------------------------------------
+// JUMLAH BARANG > 1 : tampilkan opsi atur kondisi per barang
+// -------------------------------------------------------------
+const daftarKondisiJs = <?= json_encode($daftarKondisi) ?>;
 const jumlahInput = document.getElementById('jumlahBarang');
 const linkPerUnit = document.getElementById('linkPerUnit');
 const linkKembaliSeragam = document.getElementById('linkKembaliSeragam');
@@ -210,7 +254,6 @@ const bodyPerUnit = document.getElementById('bodyKondisiPerUnit');
 function opsiKondisiHtml() {
   return daftarKondisiJs.map(k => `<option value="${k.id}">${k.nama_kondisi}</option>`).join('');
 }
-
 function renderBarisPerUnit() {
   const jumlah = parseInt(jumlahInput.value) || 1;
   bodyPerUnit.innerHTML = '';
@@ -218,17 +261,12 @@ function renderBarisPerUnit() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>Barang #${i}</td>
-      <td>
-        <select name="kondisi_unit[]" class="form-select form-select-sm" required>
-          ${opsiKondisiHtml()}
-        </select>
-      </td>
+      <td><select name="kondisi_unit[]" class="form-select form-select-sm" required>${opsiKondisiHtml()}</select></td>
       <td><input type="text" name="nomor_inventaris_unit[]" class="form-control form-control-sm" placeholder="Opsional"></td>
     `;
     bodyPerUnit.appendChild(tr);
   }
 }
-
 if (jumlahInput) {
   jumlahInput.addEventListener('input', function () {
     const jumlah = parseInt(this.value) || 1;
@@ -241,7 +279,6 @@ if (jumlahInput) {
       renderBarisPerUnit();
     }
   });
-
   linkPerUnit.addEventListener('click', function (e) {
     e.preventDefault();
     renderBarisPerUnit();
@@ -249,7 +286,6 @@ if (jumlahInput) {
     wrapSeragam.classList.add('d-none');
     wrapNomorTunggal.classList.add('d-none');
   });
-
   linkKembaliSeragam.addEventListener('click', function (e) {
     e.preventDefault();
     wrapPerUnit.classList.add('d-none');

@@ -4,14 +4,21 @@ wajibLogin();
 $pdo = getKoneksi();
 
 $totalBarang = $pdo->query('SELECT COUNT(*) FROM barang')->fetchColumn();
-$totalBaik = $pdo->query("SELECT COUNT(*) FROM barang WHERE kondisi = 'Baik'")->fetchColumn();
-$totalRusak = $pdo->query("SELECT COUNT(*) FROM barang WHERE kondisi = 'Rusak'")->fetchColumn();
-$totalDiperbaiki = $pdo->query("SELECT COUNT(*) FROM barang WHERE kondisi = 'Sedang Diperbaiki'")->fetchColumn();
 $totalAset = $pdo->query('SELECT COUNT(*) FROM barang WHERE nomor_inventaris_kantor IS NOT NULL AND nomor_inventaris_kantor <> ""')->fetchColumn();
 
+$statistikKondisi = $pdo->query(
+    'SELECT kb.nama_kondisi, kb.kode_warna, COUNT(b.id) AS jumlah
+     FROM kondisi_barang kb
+     LEFT JOIN barang b ON b.kondisi_id = kb.id
+     GROUP BY kb.id, kb.nama_kondisi, kb.kode_warna
+     ORDER BY kb.id'
+)->fetchAll();
+
 $barangTerbaru = $pdo->query(
-    'SELECT b.kode_barang, np.nama_peralatan, b.kondisi, b.user_last_edit, b.timestamp_last_edit
-     FROM barang b JOIN nama_peralatan np ON np.id = b.nama_peralatan_id
+    'SELECT b.kode_barang, np.nama_peralatan, kb.nama_kondisi, kb.kode_warna, b.user_last_edit, b.timestamp_last_edit
+     FROM barang b
+     JOIN nama_peralatan np ON np.id = b.nama_peralatan_id
+     JOIN kondisi_barang kb ON kb.id = b.kondisi_id
      ORDER BY b.id DESC LIMIT 5'
 )->fetchAll();
 
@@ -28,24 +35,14 @@ require_once __DIR__ . '/includes/header.php';
       <div class="text-muted small">Total Barang</div>
     </div>
   </div>
+  <?php foreach ($statistikKondisi as $sk): ?>
   <div class="col-6 col-md-3">
     <div class="card dashboard-stat p-3 text-center">
-      <div class="display-6 text-success"><?= (int) $totalBaik ?></div>
-      <div class="text-muted small">Kondisi Baik</div>
+      <div class="display-6" style="color: <?= amankan($sk['kode_warna']) ?>"><?= (int) $sk['jumlah'] ?></div>
+      <div class="text-muted small"><?= amankan($sk['nama_kondisi']) ?></div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card dashboard-stat p-3 text-center">
-      <div class="display-6 text-danger"><?= (int) $totalRusak ?></div>
-      <div class="text-muted small">Rusak</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card dashboard-stat p-3 text-center">
-      <div class="display-6 text-warning"><?= (int) $totalDiperbaiki ?></div>
-      <div class="text-muted small">Sedang Diperbaiki</div>
-    </div>
-  </div>
+  <?php endforeach; ?>
 </div>
 
 <div class="row g-3 mt-1">
@@ -62,7 +59,7 @@ require_once __DIR__ . '/includes/header.php';
             <tr>
               <td class="kode-barang"><?= amankan($b['kode_barang']) ?></td>
               <td><?= amankan($b['nama_peralatan']) ?></td>
-              <td><?= amankan($b['kondisi']) ?></td>
+              <td><span class="badge" style="background-color: <?= amankan($b['kode_warna']) ?>"><?= amankan($b['nama_kondisi']) ?></span></td>
               <td><small><?= amankan($b['user_last_edit']) ?><br><?= amankan($b['timestamp_last_edit']) ?></small></td>
             </tr>
           <?php endforeach; ?>

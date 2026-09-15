@@ -193,6 +193,46 @@ function setFlash($tipe, $pesan) {
     $_SESSION['flash'] = ['tipe' => $tipe, 'pesan' => $pesan];
 }
 
+/**
+ * Cari nama_peralatan yang sudah ada (case-insensitive); kalau belum
+ * ada, daftarkan otomatis dengan kode_peralatan berikutnya. Dipakai
+ * karena "Nama Peralatan" sekarang diketik bebas, bukan dropdown
+ * master terpisah lagi - tapi kode barang tetap butuh ID & kode urut.
+ */
+function cariAtauBuatPeralatan($pdo, $nama) {
+    $nama = trim($nama);
+    $stmt = $pdo->prepare('SELECT id FROM nama_peralatan WHERE nama_peralatan = ?');
+    $stmt->execute([$nama]);
+    $id = $stmt->fetchColumn();
+    if ($id) return $id;
+
+    $kodeBaru = nextKodePeralatan($pdo);
+    $stmt = $pdo->prepare('INSERT INTO nama_peralatan (kode_peralatan, nama_peralatan) VALUES (?, ?)');
+    $stmt->execute([$kodeBaru, $nama]);
+    return $pdo->lastInsertId();
+}
+
+/**
+ * Simpan file foto peralatan yang diupload ke folder uploads/peralatan/.
+ * Mengembalikan nama file (untuk disimpan di kolom foto_peralatan),
+ * atau null kalau tidak ada file yang diupload / gagal.
+ */
+function simpanFotoPeralatan() {
+    if (empty($_FILES['foto_peralatan']['name']) || $_FILES['foto_peralatan']['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+    $ekstensiDiizinkan = ['jpg', 'jpeg', 'png', 'webp'];
+    $ekstensi = strtolower(pathinfo($_FILES['foto_peralatan']['name'], PATHINFO_EXTENSION));
+    if (!in_array($ekstensi, $ekstensiDiizinkan, true)) return null;
+
+    $folderTujuan = __DIR__ . '/../uploads/peralatan/';
+    if (!is_dir($folderTujuan)) mkdir($folderTujuan, 0755, true);
+
+    $namaFile = uniqid('foto_') . '.' . $ekstensi;
+    move_uploaded_file($_FILES['foto_peralatan']['tmp_name'], $folderTujuan . $namaFile);
+    return $namaFile;
+}
+
 function ambilFlash() {
     if (!empty($_SESSION['flash'])) {
         $flash = $_SESSION['flash'];
