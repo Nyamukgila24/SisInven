@@ -5,6 +5,7 @@ $pdo = getKoneksi();
 
 $cari = trim($_GET['cari'] ?? '');
 $filterKondisi = $_GET['kondisi'] ?? '';
+$filterTahun = $_GET['tahun'] ?? '';
 $halaman = max(1, (int) ($_GET['halaman'] ?? 1));
 $perHalaman = 10;
 
@@ -19,13 +20,18 @@ $sqlDasar = 'FROM barang b
 $params = [];
 
 if ($cari !== '') {
-    $sqlDasar .= ' AND (b.kode_barang LIKE ? OR np.nama_peralatan LIKE ? OR b.spesifikasi LIKE ? OR b.nomor_inventaris_kantor LIKE ?)';
+    $sqlDasar .= ' AND (b.kode_barang LIKE ? OR np.nama_peralatan LIKE ? OR b.spesifikasi LIKE ?
+                        OR b.nomor_inventaris_kantor LIKE ? OR b.tipe_barang LIKE ?)';
     $like = "%{$cari}%";
-    array_push($params, $like, $like, $like, $like);
+    array_push($params, $like, $like, $like, $like, $like);
 }
 if ($filterKondisi !== '') {
     $sqlDasar .= ' AND b.kondisi_id = ?';
     $params[] = $filterKondisi;
+}
+if ($filterTahun !== '') {
+    $sqlDasar .= ' AND b.tahun_perolehan = ?';
+    $params[] = $filterTahun;
 }
 
 $stmtTotal = $pdo->prepare('SELECT COUNT(*) ' . $sqlDasar);
@@ -42,6 +48,7 @@ $stmt->execute($params);
 $daftar = $stmt->fetchAll();
 
 $daftarKondisi = $pdo->query('SELECT * FROM kondisi_barang ORDER BY id')->fetchAll();
+$daftarTahun = $pdo->query('SELECT DISTINCT tahun_perolehan FROM barang WHERE tahun_perolehan IS NOT NULL ORDER BY tahun_perolehan DESC')->fetchAll(PDO::FETCH_COLUMN);
 
 $judulHalaman = 'Data Barang';
 require_once __DIR__ . '/../includes/header.php';
@@ -57,8 +64,8 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="card p-3 mb-3">
   <form method="get" class="row g-2 align-items-end">
-    <div class="col-md-6">
-      <label class="form-label small mb-1">Cari (kode, peralatan, spesifikasi, no. inventaris)</label>
+    <div class="col-md-4">
+      <label class="form-label small mb-1">Cari (kode, peralatan, tipe, spesifikasi, no. inventaris)</label>
       <input type="text" name="cari" class="form-control" value="<?= amankan($cari) ?>" placeholder="Ketik kata kunci...">
     </div>
     <div class="col-md-3">
@@ -67,6 +74,15 @@ require_once __DIR__ . '/../includes/header.php';
         <option value="">Semua Kondisi</option>
         <?php foreach ($daftarKondisi as $kb): ?>
           <option value="<?= $kb['id'] ?>" <?= $filterKondisi == $kb['id'] ? 'selected' : '' ?>><?= amankan($kb['nama_kondisi']) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Tahun</label>
+      <select name="tahun" class="form-select">
+        <option value="">Semua</option>
+        <?php foreach ($daftarTahun as $th): ?>
+          <option value="<?= $th ?>" <?= $filterTahun == $th ? 'selected' : '' ?>><?= amankan($th) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -84,6 +100,8 @@ require_once __DIR__ . '/../includes/header.php';
         <tr>
           <th>Kode Barang</th>
           <th>Peralatan</th>
+          <th>Tipe</th>
+          <th>Tahun</th>
           <th>Kategori / Subkategori</th>
           <th>Merek</th>
           <th>Lokasi</th>
@@ -94,12 +112,14 @@ require_once __DIR__ . '/../includes/header.php';
       </thead>
       <tbody>
       <?php if (!$daftar): ?>
-        <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data barang yang cocok.</td></tr>
+        <tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data barang yang cocok.</td></tr>
       <?php endif; ?>
       <?php foreach ($daftar as $row): ?>
         <tr>
           <td class="kode-barang"><?= amankan($row['kode_barang']) ?></td>
           <td><?= amankan($row['nama_peralatan']) ?></td>
+          <td><?= amankan($row['tipe_barang']) ?></td>
+          <td><?= amankan($row['tahun_perolehan']) ?></td>
           <td><small><?= amankan($row['nama_kategori']) ?> / <?= amankan($row['nama_subkategori']) ?></small></td>
           <td><?= amankan($row['nama_merek']) ?></td>
           <td><?= amankan($row['nama_ruangan']) ?></td>
@@ -115,15 +135,16 @@ require_once __DIR__ . '/../includes/header.php';
     </table>
   </div>
   <p class="text-muted small mt-2 mb-0">Total data sesuai filter: <?= $totalData ?> barang.</p>
-  <?php renderPaginasi($halaman, $totalData, $perHalaman, ['cari' => $cari, 'kondisi' => $filterKondisi]); ?>
+  <?php renderPaginasi($halaman, $totalData, $perHalaman, ['cari' => $cari, 'kondisi' => $filterKondisi, 'tahun' => $filterTahun]); ?>
 </div>
 
 <form method="post" action="hapus.php" id="formHapus" class="d-none">
   <input type="hidden" name="id" id="hId">
 </form>
 <script>
+  
 function hapus(id) {
-  if (confirm('Hapus barang ini? Kode barang yang sudah dipakai tidak akan dipakai ulang otomatis.')) {
+  if (confirm('Hapus barang ini?')) {
     document.getElementById('hId').value = id;
     document.getElementById('formHapus').submit();
   }

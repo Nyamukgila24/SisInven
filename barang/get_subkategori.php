@@ -1,10 +1,4 @@
 <?php
-/**
- * Endpoint kecil untuk fitur Dropdown Bertingkat (FRD 3.1).
- * Dipanggil lewat JavaScript saat pengguna memilih Kategori pada form
- * barang, mengembalikan daftar Subkategori JSON yang sesuai kategori
- * tersebut saja (bukan semua subkategori di database).
- */
 require_once __DIR__ . '/../includes/functions.php';
 wajibLogin();
 header('Content-Type: application/json');

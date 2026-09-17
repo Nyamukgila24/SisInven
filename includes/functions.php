@@ -119,9 +119,11 @@ function masterMasihDipakai($pdo, $kolom, $id) {
  * inventaris kantor. Dipakai bersama oleh laporan/index.php,
  * export_excel.php, dan export_pdf.php supaya hasilnya selalu sama.
  */
-function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $halaman = null, $perHalaman = 10) {
-    $sql = 'SELECT b.kode_barang, np.nama_peralatan, k.nama_kategori, s.nama_subkategori, m.nama_merek,
-                   l.nama_ruangan, b.spesifikasi, b.nomor_inventaris_kantor, kb.nama_kondisi AS kondisi, kb.kode_warna,
+function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang = '', $tahunPerolehan = '', $halaman = null, $perHalaman = 10) {
+    $sql = 'SELECT b.kode_barang, np.nama_peralatan, b.tipe_barang, b.tahun_perolehan,
+                   k.nama_kategori, s.nama_subkategori, m.nama_merek,
+                   l.nama_ruangan, b.spesifikasi, b.nomor_inventaris_kantor,
+                   kb.nama_kondisi AS kondisi, kb.kode_warna,
                    b.user_last_edit, b.timestamp_last_edit
             FROM barang b
             JOIN kategori k ON k.id = b.kategori_id
@@ -142,6 +144,17 @@ function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $halaman = nu
     } elseif ($statusAset === 'tanpa') {
         $sql .= ' AND (b.nomor_inventaris_kantor IS NULL OR b.nomor_inventaris_kantor = "")';
     }
+    // ===== BARU =====
+    if ($tipeBarang !== '') {
+        $sql .= ' AND b.tipe_barang = ?';
+        $params[] = $tipeBarang;
+    }
+    if ($tahunPerolehan !== '') {
+        $sql .= ' AND b.tahun_perolehan = ?';
+        $params[] = $tahunPerolehan;
+    }
+    // ================
+
     $sql .= ' ORDER BY b.kode_barang';
 
     if ($halaman !== null) {
@@ -153,13 +166,10 @@ function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $halaman = nu
     return $stmt->fetchAll();
 }
 
-/**
- * Menghitung total data laporan (dengan filter yang sama), dipakai
- * untuk menentukan jumlah halaman pagination.
- */
-function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '') {
+function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang = '', $tahunPerolehan = '') {
     $sql = 'SELECT COUNT(*) FROM barang b WHERE 1=1';
     $params = [];
+
     if ($kondisiId !== '') {
         $sql .= ' AND b.kondisi_id = ?';
         $params[] = $kondisiId;
@@ -169,6 +179,17 @@ function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '') {
     } elseif ($statusAset === 'tanpa') {
         $sql .= ' AND (b.nomor_inventaris_kantor IS NULL OR b.nomor_inventaris_kantor = "")';
     }
+    // ===== BARU =====
+    if ($tipeBarang !== '') {
+        $sql .= ' AND b.tipe_barang = ?';
+        $params[] = $tipeBarang;
+    }
+    if ($tahunPerolehan !== '') {
+        $sql .= ' AND b.tahun_perolehan = ?';
+        $params[] = $tahunPerolehan;
+    }
+    // ================
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return (int) $stmt->fetchColumn();

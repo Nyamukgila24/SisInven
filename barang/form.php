@@ -9,6 +9,7 @@ $data = [
     'kategori_id' => '', 'subkategori_id' => '', 'merek_id' => '', 'lokasi_id' => '',
     'nama_peralatan_id' => '', 'nama_peralatan' => '', 'nama_merek' => '', 'foto_peralatan' => null,
     'spesifikasi' => '', 'nomor_inventaris_kantor' => '', 'kondisi_id' => '',
+    'tipe_barang' => '', 'tahun_perolehan' => '',
 ];
 $modeEdit = false;
 
@@ -35,6 +36,9 @@ $daftarMerek = $pdo->query('SELECT * FROM merek ORDER BY nama_merek')->fetchAll(
 $daftarLokasi = $pdo->query('SELECT * FROM lokasi ORDER BY nama_ruangan')->fetchAll();
 $daftarKondisi = $pdo->query('SELECT * FROM kondisi_barang ORDER BY id')->fetchAll();
 
+// Daftar tipe untuk datalist (saran otomatis)
+$daftarTipe = $pdo->query('SELECT DISTINCT tipe_barang FROM barang WHERE tipe_barang IS NOT NULL AND tipe_barang <> "" ORDER BY tipe_barang')->fetchAll(PDO::FETCH_COLUMN);
+
 $daftarSubkategoriAwal = [];
 if ($data['kategori_id']) {
     $stmt = $pdo->prepare('SELECT id, nama_subkategori FROM subkategori WHERE kategori_id = ? ORDER BY nama_subkategori');
@@ -43,6 +47,7 @@ if ($data['kategori_id']) {
 }
 
 $dataMasterKosong = !$daftarKategori || !$daftarMerek || !$daftarLokasi || !$daftarKondisi;
+$tahunSekarang = (int) date('Y');
 
 $judulHalaman = $modeEdit ? 'Ubah Barang' : 'Tambah Barang';
 ?>
@@ -67,12 +72,27 @@ require_once __DIR__ . '/../includes/header.php';
     <?php if ($modeEdit): ?>
       <div class="alert alert-secondary py-2">
         Kode Barang saat ini: <span class="kode-barang"><?= amankan($data['kode_barang']) ?></span>
-        &mdash; Kategori, Subkategori, dan Nama Peralatan tidak bisa diubah agar kode barang tetap konsisten.
-        Jika salah pilih sejak awal, hapus barang ini dan input ulang.
+        - Kategori, Subkategori, dan Nama Peralatan tidak bisa diubah agar kode barang tetap konsisten.
       </div>
     <?php endif; ?>
 
-    <div class="row g-3">
+    <datalist id="daftarTipeList">
+      <?php foreach ($daftarTipe as $t): ?>
+        <option value="<?= amankan($t) ?>">
+      <?php endforeach; ?>
+    </datalist>
+
+        <div class="row g-3">
+
+      <!-- ============================================ -->
+      <!-- GRUP 1: KLASIFIKASI BARANG                   -->
+      <!-- ============================================ -->
+      <div class="col-12">
+        <h6 class="text-primary border-bottom pb-2 mb-0">
+          <i class="bi bi-diagram-3"></i> Klasifikasi Barang
+        </h6>
+      </div>
+
       <div class="col-md-4">
         <label class="form-label">Kategori</label>
         <select name="kategori_id" id="selKategori" class="form-select" required <?= $modeEdit ? 'disabled' : '' ?>>
@@ -93,7 +113,7 @@ require_once __DIR__ . '/../includes/header.php';
           <?php endforeach; ?>
         </select>
         <?php if ($modeEdit): ?><input type="hidden" name="subkategori_id" value="<?= $data['subkategori_id'] ?>"><?php endif; ?>
-        <div class="form-text">Pilihan menyesuaikan otomatis dengan Kategori yang dipilih.</div>
+        <div class="form-text">Otomatis menyesuaikan Kategori.</div>
       </div>
 
       <div class="col-md-4">
@@ -103,14 +123,23 @@ require_once __DIR__ . '/../includes/header.php';
           <input type="hidden" name="nama_peralatan_id" value="<?= $data['nama_peralatan_id'] ?>">
         <?php else: ?>
           <input type="text" name="nama_peralatan" class="form-control" list="daftarPeralatanList" required
-                 placeholder="Ketik nama peralatan, contoh: Komputer">
+                 placeholder="Contoh: Komputer, Router, Kursi">
           <datalist id="daftarPeralatanList">
             <?php foreach ($pdo->query('SELECT DISTINCT nama_peralatan FROM nama_peralatan ORDER BY nama_peralatan') as $p): ?>
               <option value="<?= amankan($p['nama_peralatan']) ?>">
             <?php endforeach; ?>
           </datalist>
-          <div class="form-text">Ketik nama baru, atau pilih dari saran yang sudah pernah dipakai.</div>
+          <div class="form-text">Ketik baru, atau pilih dari saran.</div>
         <?php endif; ?>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- GRUP 2: IDENTITAS PRODUK                     -->
+      <!-- ============================================ -->
+      <div class="col-12 mt-4">
+        <h6 class="text-primary border-bottom pb-2 mb-0">
+          <i class="bi bi-tag"></i> Identitas Produk
+        </h6>
       </div>
 
       <div class="col-md-4">
@@ -123,6 +152,32 @@ require_once __DIR__ . '/../includes/header.php';
         </select>
       </div>
 
+      <div class="col-md-4" id="wrapTipeSeragam">
+        <label class="form-label">Tipe Barang</label>
+        <input type="text" name="tipe_barang" id="inp__tipe"
+               class="form-control" list="daftarTipeList" required
+               value="<?= amankan($data['tipe_barang']) ?>"
+               placeholder="Contoh: AS123, Archer C6">
+        <div class="form-text">Saran muncul dari tipe yang pernah diinput.</div>
+      </div>
+
+      <div class="col-md-4" id="wrapTahunSeragam">
+        <label class="form-label">Tahun Perolehan</label>
+        <input type="number" name="tahun_perolehan" id="inp__tahun"
+              class="form-control" required
+              value="<?= amankan($data['tahun_perolehan']) ?>"
+              placeholder="Contoh: <?= $tahunSekarang ?>">
+      </div>
+
+      <!-- ============================================ -->
+      <!-- GRUP 3: PENEMPATAN & JUMLAH                  -->
+      <!-- ============================================ -->
+      <div class="col-12 mt-4">
+        <h6 class="text-primary border-bottom pb-2 mb-0">
+          <i class="bi bi-geo-alt"></i> Penempatan & Jumlah
+        </h6>
+      </div>
+
       <div class="col-md-4">
         <label class="form-label">Lokasi / Ruangan</label>
         <select name="lokasi_id" class="form-select" required>
@@ -133,6 +188,14 @@ require_once __DIR__ . '/../includes/header.php';
         </select>
       </div>
 
+      <?php if (!$modeEdit): ?>
+      <div class="col-md-4">
+        <label class="form-label">Jumlah Barang</label>
+        <input type="number" name="jumlah_barang" id="jumlahBarang" class="form-control" value="1" min="1" max="100" required>
+        <div class="form-text">Berapa unit yang masuk sekaligus.</div>
+      </div>
+      <?php endif; ?>
+
       <div class="col-md-4">
         <label class="form-label">Foto Peralatan <span class="text-muted">(opsional)</span></label>
         <?php if ($modeEdit && $data['foto_peralatan']): ?>
@@ -142,17 +205,18 @@ require_once __DIR__ . '/../includes/header.php';
         <?php endif; ?>
         <input type="file" name="foto_peralatan" class="form-control" accept="image/jpeg,image/png,image/webp">
         <?php if ($modeEdit && $data['foto_peralatan']): ?>
-          <div class="form-text">Kosongkan jika tidak ingin mengganti foto.</div>
+          <div class="form-text">Kosongkan jika tidak ingin mengganti.</div>
         <?php endif; ?>
       </div>
 
-      <?php if (!$modeEdit): ?>
-      <div class="col-md-4">
-        <label class="form-label">Jumlah Barang</label>
-        <input type="number" name="jumlah_barang" id="jumlahBarang" class="form-control" value="1" min="1" max="100" required>
-        <div class="form-text">Barang sejenis (kategori/merek/lokasi/peralatan sama) yang masuk sekaligus. Foto berlaku sama untuk semua.</div>
+      <!-- ============================================ -->
+      <!-- GRUP 4: STATUS ASET                          -->
+      <!-- ============================================ -->
+      <div class="col-12 mt-4">
+        <h6 class="text-primary border-bottom pb-2 mb-0">
+          <i class="bi bi-shield-check"></i> Status Aset
+        </h6>
       </div>
-      <?php endif; ?>
 
       <div class="col-md-4" id="wrapKondisiSeragam">
         <label class="form-label">Kondisi Barang</label>
@@ -161,34 +225,52 @@ require_once __DIR__ . '/../includes/header.php';
             <option value="<?= $kb['id'] ?>" <?= $data['kondisi_id'] == $kb['id'] ? 'selected' : '' ?>><?= amankan($kb['nama_kondisi']) ?></option>
           <?php endforeach; ?>
         </select>
+      </div>
+
+      <div class="col-md-8" id="wrapNomorInventarisTunggal">
+        <label class="form-label">Nomor Inventaris Kantor <span class="text-muted">(opsional)</span></label>
+        <input type="text" name="nomor_inventaris_kantor" class="form-control"
+               value="<?= amankan($data['nomor_inventaris_kantor']) ?>"
+               placeholder="Kosongkan jika bukan aset resmi kantor">
         <?php if (!$modeEdit): ?>
           <div class="form-text">
-            <a href="#" id="linkPerUnit" class="d-none">Kondisinya berbeda-beda? Atur per barang</a>
+            <a href="#" id="linkPerUnit">Tipe / Tahun / Kondisi berbeda tiap barang? Atur per unit</a>
           </div>
         <?php endif; ?>
       </div>
 
-      <div class="col-md-6" id="wrapNomorInventarisTunggal">
-        <label class="form-label">Nomor Inventaris Kantor <span class="text-muted">(opsional)</span></label>
-        <input type="text" name="nomor_inventaris_kantor" class="form-control" value="<?= amankan($data['nomor_inventaris_kantor']) ?>" placeholder="Kosongkan jika barang bukan aset resmi kantor">
-      </div>
-
       <?php if (!$modeEdit): ?>
-      <div class="col-12 d-none" id="wrapKondisiPerUnit">
-        <label class="form-label">Kondisi & Nomor Inventaris per Barang</label>
+      <div class="col-12 d-none" id="wrapPerUnit">
+        <label class="form-label">Data per Unit</label>
         <table class="table table-sm align-middle">
           <thead>
-            <tr><th width="20%">Barang</th><th width="40%">Kondisi</th><th width="40%">No. Inventaris (opsional)</th></tr>
+            <tr>
+              <th width="10%">Barang</th>
+              <th width="22%">Tipe Barang</th>
+              <th width="12%">Tahun</th>
+              <th width="20%">Kondisi</th>
+              <th width="36%">No. Inventaris (opsional)</th>
+            </tr>
           </thead>
-          <tbody id="bodyKondisiPerUnit"></tbody>
+          <tbody id="bodyPerUnit"></tbody>
         </table>
-        <a href="#" id="linkKembaliSeragam" class="form-text">&larr; Pakai kondisi yang sama untuk semua</a>
+        <a href="#" id="linkKembaliSeragam" class="form-text">&larr; Pakai data yang sama untuk semua</a>
       </div>
       <?php endif; ?>
 
+      <!-- ============================================ -->
+      <!-- GRUP 5: SPESIFIKASI                          -->
+      <!-- ============================================ -->
+      <div class="col-12 mt-4">
+        <h6 class="text-primary border-bottom pb-2 mb-0">
+          <i class="bi bi-card-text"></i> Detail Spesifikasi
+        </h6>
+      </div>
+
       <div class="col-12">
         <label class="form-label">Spesifikasi Barang</label>
-        <textarea name="spesifikasi" class="form-control" rows="3" required placeholder="Contoh: Intel Core i5, RAM 8GB, SSD 256GB"><?= amankan($data['spesifikasi']) ?></textarea>
+        <textarea name="spesifikasi" class="form-control" rows="3" required
+                  placeholder="Contoh: Intel Core i5, RAM 8GB, SSD 256GB"><?= amankan($data['spesifikasi']) ?></textarea>
       </div>
     </div>
 
@@ -226,9 +308,6 @@ if (selKategori && !selKategori.disabled) {
   });
 }
 
-// -------------------------------------------------------------
-// DROPDOWN MEREK BISA DICARI (pakai Choices.js)
-// -------------------------------------------------------------
 if (document.querySelector('#selMerek')) {
   new Choices('#selMerek', {
     searchEnabled: true,
@@ -239,21 +318,25 @@ if (document.querySelector('#selMerek')) {
   });
 }
 
-// -------------------------------------------------------------
-// JUMLAH BARANG > 1 : tampilkan opsi atur kondisi per barang
-// -------------------------------------------------------------
+// =================================================================
+// Toggle Seragam vs Per-Unit
+// =================================================================
 const daftarKondisiJs = <?= json_encode($daftarKondisi) ?>;
-const jumlahInput = document.getElementById('jumlahBarang');
-const linkPerUnit = document.getElementById('linkPerUnit');
-const linkKembaliSeragam = document.getElementById('linkKembaliSeragam');
-const wrapSeragam = document.getElementById('wrapKondisiSeragam');
-const wrapNomorTunggal = document.getElementById('wrapNomorInventarisTunggal');
-const wrapPerUnit = document.getElementById('wrapKondisiPerUnit');
-const bodyPerUnit = document.getElementById('bodyKondisiPerUnit');
+const tahunSekarangJs = <?= $tahunSekarang ?>;
+const jumlahInput       = document.getElementById('jumlahBarang');
+const linkPerUnit       = document.getElementById('linkPerUnit');
+const linkKembaliSeragam= document.getElementById('linkKembaliSeragam');
+const wrapSeragam       = document.getElementById('wrapKondisiSeragam');
+const wrapTipeSeragam   = document.getElementById('wrapTipeSeragam');
+const wrapTahunSeragam  = document.getElementById('wrapTahunSeragam');
+const wrapNomorTunggal  = document.getElementById('wrapNomorInventarisTunggal');
+const wrapPerUnit       = document.getElementById('wrapPerUnit');
+const bodyPerUnit       = document.getElementById('bodyPerUnit');
 
 function opsiKondisiHtml() {
   return daftarKondisiJs.map(k => `<option value="${k.id}">${k.nama_kondisi}</option>`).join('');
 }
+
 function renderBarisPerUnit() {
   const jumlah = parseInt(jumlahInput.value) || 1;
   bodyPerUnit.innerHTML = '';
@@ -261,36 +344,47 @@ function renderBarisPerUnit() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>Barang #${i}</td>
+      <td><input type="text" name="tipe_unit[]" class="form-control form-control-sm" list="daftarTipeList" required placeholder="Contoh: AS123"></td>
       <td><select name="kondisi_unit[]" class="form-select form-select-sm" required>${opsiKondisiHtml()}</select></td>
       <td><input type="text" name="nomor_inventaris_unit[]" class="form-control form-control-sm" placeholder="Opsional"></td>
     `;
     bodyPerUnit.appendChild(tr);
   }
 }
+
+function setModeSeragam() {
+  wrapPerUnit.classList.add('d-none');
+  wrapSeragam.classList.remove('d-none');
+  wrapTipeSeragam.classList.remove('d-none');
+  wrapTahunSeragam.classList.remove('d-none');
+  wrapNomorTunggal.classList.remove('d-none');
+}
+function setModePerUnit() {
+  renderBarisPerUnit();
+  wrapPerUnit.classList.remove('d-none');
+  wrapSeragam.classList.add('d-none');
+  wrapTipeSeragam.classList.add('d-none');
+  wrapTahunSeragam.classList.add('d-none');
+  wrapNomorTunggal.classList.add('d-none');
+}
+
 if (jumlahInput) {
   jumlahInput.addEventListener('input', function () {
     const jumlah = parseInt(this.value) || 1;
-    linkPerUnit.classList.toggle('d-none', jumlah <= 1);
-    if (jumlah <= 1) {
-      wrapPerUnit.classList.add('d-none');
-      wrapSeragam.classList.remove('d-none');
-      wrapNomorTunggal.classList.remove('d-none');
+    // Kalau jumlah <= 1 dan masih di mode per-unit, balik ke seragam
+    if (jumlah <= 1 && !wrapPerUnit.classList.contains('d-none')) {
+      setModeSeragam();
     } else if (!wrapPerUnit.classList.contains('d-none')) {
       renderBarisPerUnit();
     }
   });
   linkPerUnit.addEventListener('click', function (e) {
     e.preventDefault();
-    renderBarisPerUnit();
-    wrapPerUnit.classList.remove('d-none');
-    wrapSeragam.classList.add('d-none');
-    wrapNomorTunggal.classList.add('d-none');
+    setModePerUnit();
   });
   linkKembaliSeragam.addEventListener('click', function (e) {
     e.preventDefault();
-    wrapPerUnit.classList.add('d-none');
-    wrapSeragam.classList.remove('d-none');
-    wrapNomorTunggal.classList.remove('d-none');
+    setModeSeragam();
   });
 }
 </script>

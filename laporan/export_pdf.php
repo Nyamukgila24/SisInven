@@ -4,14 +4,35 @@ wajibLogin();
 $pdo = getKoneksi();
 $base = urlDasar();
 
-$kondisi = $_GET['kondisi'] ?? '';
-$statusAset = $_GET['status_aset'] ?? '';
-$data = ambilDataLaporan($pdo, $kondisi, $statusAset);
+// Baca SEMUA filter dari URL
+$kondisi        = $_GET['kondisi'] ?? '';
+$statusAset     = $_GET['status_aset'] ?? '';
+$tipeBarang     = $_GET['tipe'] ?? '';
+$tahunPerolehan = $_GET['tahun'] ?? '';
 
+// Ambil data (tanpa pagination)
+$data = ambilDataLaporan($pdo, $kondisi, $statusAset, $tipeBarang, $tahunPerolehan);
+
+// Bangun keterangan filter untuk ditampilkan di PDF
 $judulFilter = [];
-if ($kondisi !== '') $judulFilter[] = "Kondisi: {$kondisi}";
-if ($statusAset === 'ada') $judulFilter[] = 'Punya Nomor Inventaris Kantor';
-if ($statusAset === 'tanpa') $judulFilter[] = 'Tanpa Nomor Inventaris Kantor';
+if ($kondisi !== '') {
+    // Cari nama kondisi biar labelnya rapi (bukan ID)
+    $stmt = $pdo->prepare('SELECT nama_kondisi FROM kondisi_barang WHERE id = ?');
+    $stmt->execute([$kondisi]);
+    $namaKondisi = $stmt->fetchColumn() ?: $kondisi;
+    $judulFilter[] = "Kondisi: {$namaKondisi}";
+}
+if ($tipeBarang !== '') {
+    $judulFilter[] = "Tipe: {$tipeBarang}";
+}
+if ($tahunPerolehan !== '') {
+    $judulFilter[] = "Tahun Perolehan: {$tahunPerolehan}";
+}
+if ($statusAset === 'ada') {
+    $judulFilter[] = 'Punya Nomor Inventaris Kantor';
+} elseif ($statusAset === 'tanpa') {
+    $judulFilter[] = 'Tanpa Nomor Inventaris Kantor';
+}
 $keteranganFilter = $judulFilter ? implode(' | ', $judulFilter) : 'Semua Data';
 
 ?>
@@ -49,29 +70,35 @@ $keteranganFilter = $judulFilter ? implode(' | ', $judulFilter) : 'Semua Data';
 <table class="table-laporan">
     <thead>
         <tr>
-            <th width="5%">No</th>
-            <th width="12%">Kode Barang</th>
-            <th width="18%">Nama Peralatan</th>
-            <th width="15%">Kategori / Sub</th>
-            <th width="12%">Merek</th>
-            <th width="12%">Lokasi</th>
-            <th width="14%">No. Inventaris</th>
-            <th width="12%">Kondisi</th>
+            <th width="4%">No</th>
+            <th width="11%">Kode Barang</th>
+            <th width="14%">Nama Peralatan</th>
+            <th width="13%">Tipe Barang</th>
+            <th width="6%">Tahun</th>
+            <th width="12%">Kategori / Sub</th>
+            <th width="10%">Merek</th>
+            <th width="10%">Lokasi</th>
+            <th width="10%">No. Inventaris</th>
+            <th width="10%">Kondisi</th>
         </tr>
     </thead>
     <tbody>
         <?php if (!$data): ?>
-            <tr><td colspan="8" class="text-center py-4">Tidak ada data yang ditemukan.</td></tr>
+            <tr><td colspan="10" class="text-center py-4">Tidak ada data yang ditemukan.</td></tr>
         <?php endif; ?>
         <?php foreach ($data as $i => $row): ?>
             <tr>
                 <td class="text-center"><?= $i + 1 ?></td>
                 <td><?= amankan($row['kode_barang']) ?></td>
                 <td><?= amankan($row['nama_peralatan']) ?></td>
+                <td><?= amankan($row['tipe_barang']) ?></td>
+                <td class="text-center"><?= amankan($row['tahun_perolehan']) ?></td>
                 <td><?= amankan($row['nama_kategori']) ?> / <?= amankan($row['nama_subkategori']) ?></td>
                 <td><?= amankan($row['nama_merek']) ?></td>
                 <td><?= amankan($row['nama_ruangan']) ?></td>
-                <td class="text-center"><?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '-' ?></td>
+                <td class="text-center">
+                    <?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '-' ?>
+                </td>
                 <td class="text-center">
                     <span class="badge-kondisi" style="background-color: <?= amankan($row['kode_warna']) ?>">
                         <?= amankan($row['kondisi']) ?>
