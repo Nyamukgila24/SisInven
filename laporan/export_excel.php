@@ -8,10 +8,12 @@ $kondisi        = $_GET['kondisi'] ?? '';
 $statusAset     = $_GET['status_aset'] ?? '';
 $tipeBarang     = $_GET['tipe'] ?? '';
 $tahunPerolehan = $_GET['tahun'] ?? '';
+$peralatanId    = $_GET['peralatan'] ?? '';
+$merekId        = $_GET['merek'] ?? '';
+$lokasiId       = $_GET['lokasi'] ?? '';
 
-// Panggil TANPA pagination (parameter $halaman default null)
-// supaya SEMUA data terfilter yang diekspor, bukan cuma 10 baris pertama
-$data = ambilDataLaporan($pdo, $kondisi, $statusAset, $tipeBarang, $tahunPerolehan);
+$data = ambilDataLaporan($pdo, $kondisi, $statusAset, $tipeBarang, $tahunPerolehan,
+                         $peralatanId, $merekId, $lokasiId);
 
 $namaFile = 'laporan_inventaris_' . date('Y-m-d_His') . '.csv';
 

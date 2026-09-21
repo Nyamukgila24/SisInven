@@ -114,12 +114,7 @@ function masterMasihDipakai($pdo, $kolom, $id) {
     return $stmt->fetchColumn() > 0;
 }
 
-/**
- * Query data laporan barang dengan filter kondisi & status nomor
- * inventaris kantor. Dipakai bersama oleh laporan/index.php,
- * export_excel.php, dan export_pdf.php supaya hasilnya selalu sama.
- */
-function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang = '', $tahunPerolehan = '', $halaman = null, $perHalaman = 10) {
+function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang = '', $tahunPerolehan = '', $peralatanId = '', $merekId = '', $lokasiId = '', $halaman = null, $perHalaman = 10) {
     $sql = 'SELECT b.kode_barang, np.nama_peralatan, b.tipe_barang, b.tahun_perolehan,
                    k.nama_kategori, s.nama_subkategori, m.nama_merek,
                    l.nama_ruangan, b.spesifikasi, b.nomor_inventaris_kantor,
@@ -153,7 +148,18 @@ function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang =
         $sql .= ' AND b.tahun_perolehan = ?';
         $params[] = $tahunPerolehan;
     }
-    // ================
+        if ($peralatanId !== '') {
+        $sql .= ' AND b.nama_peralatan_id = ?';
+        $params[] = $peralatanId;
+    }
+    if ($merekId !== '') {
+        $sql .= ' AND b.merek_id = ?';
+        $params[] = $merekId;
+    }
+    if ($lokasiId !== '') {
+        $sql .= ' AND b.lokasi_id = ?';
+        $params[] = $lokasiId;
+    }
 
     $sql .= ' ORDER BY b.kode_barang';
 
@@ -166,7 +172,7 @@ function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang =
     return $stmt->fetchAll();
 }
 
-function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang = '', $tahunPerolehan = '') {
+function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang = '', $tahunPerolehan = '', $peralatanId = '', $merekId = '', $lokasiId = '') {
     $sql = 'SELECT COUNT(*) FROM barang b WHERE 1=1';
     $params = [];
 
@@ -179,7 +185,6 @@ function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang 
     } elseif ($statusAset === 'tanpa') {
         $sql .= ' AND (b.nomor_inventaris_kantor IS NULL OR b.nomor_inventaris_kantor = "")';
     }
-    // ===== BARU =====
     if ($tipeBarang !== '') {
         $sql .= ' AND b.tipe_barang = ?';
         $params[] = $tipeBarang;
@@ -188,11 +193,51 @@ function hitungDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang 
         $sql .= ' AND b.tahun_perolehan = ?';
         $params[] = $tahunPerolehan;
     }
-    // ================
+    if ($peralatanId !== '') {
+        $sql .= ' AND b.nama_peralatan_id = ?';
+        $params[] = $peralatanId;
+    }
+    if ($merekId !== '') {
+        $sql .= ' AND b.merek_id = ?';
+        $params[] = $merekId;
+    }
+    if ($lokasiId !== '') {
+        $sql .= ' AND b.lokasi_id = ?';
+        $params[] = $lokasiId;
+    }
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return (int) $stmt->fetchColumn();
+}
+
+function ambilRingkasanBarang($pdo) {
+    $daftarKondisi = $pdo->query('SELECT id, nama_kondisi FROM kondisi_barang ORDER BY id')->fetchAll();
+
+    $sql = 'SELECT np.nama_peralatan,
+                   kb.id AS kondisi_id,
+                   COUNT(*) AS jumlah
+            FROM barang b
+            JOIN nama_peralatan np ON np.id = b.nama_peralatan_id
+            JOIN kondisi_barang kb ON kb.id = b.kondisi_id
+            GROUP BY np.nama_peralatan, kb.id
+            ORDER BY np.nama_peralatan';
+    $rows = $pdo->query($sql)->fetchAll();
+
+    $ringkasan = [];
+    foreach ($rows as $r) {
+        $nama = $r['nama_peralatan'];
+        if (!isset($ringkasan[$nama])) {
+            $ringkasan[$nama] = ['total' => 0, 'kondisi' => []];
+        }
+        $ringkasan[$nama]['kondisi'][$r['kondisi_id']] = (int) $r['jumlah'];
+        $ringkasan[$nama]['total'] += (int) $r['jumlah'];
+    }
+
+    return [
+        'daftar_kondisi' => $daftarKondisi,
+        'ringkasan'      => $ringkasan,
+    ];
 }
 
 function renderPaginasi($halamanSekarang, $totalData, $perHalaman, $paramsLain = []) {

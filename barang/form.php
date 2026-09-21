@@ -339,12 +339,13 @@ function opsiKondisiHtml() {
 
 function renderBarisPerUnit() {
   const jumlah = parseInt(jumlahInput.value) || 1;
-  bodyPerUnit.innerHTML = '';
+  bodyPerUnit.innerHTML = ''; 
   for (let i = 1; i <= jumlah; i++) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>Barang #${i}</td>
       <td><input type="text" name="tipe_unit[]" class="form-control form-control-sm" list="daftarTipeList" required placeholder="Contoh: AS123"></td>
+      <td><input type="number" name="tahun_unit[]" class="form-control form-control-sm" required min="1900" max="${tahunSekarangJs}" placeholder="${tahunSekarangJs}"></td>
       <td><select name="kondisi_unit[]" class="form-select form-select-sm" required>${opsiKondisiHtml()}</select></td>
       <td><input type="text" name="nomor_inventaris_unit[]" class="form-control form-control-sm" placeholder="Opsional"></td>
     `;

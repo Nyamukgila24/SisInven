@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/functions.php';
 wajibLogin();
 $pdo = getKoneksi();
 $base = urlDasar();
+$dataRingkasan = ambilRingkasanBarang($pdo);
 
 // Baca SEMUA filter dari URL
 $kondisi        = $_GET['kondisi'] ?? '';
@@ -83,54 +84,39 @@ $keteranganFilter = $judulFilter ? implode(' | ', $judulFilter) : 'Semua Data';
     <div class="kop-alamat">Jl. Dukuh Menanggal III Nomor 29, Surabaya, Jawa Timur 60123 | Telp. (031) 8290071</div>
 </div>
 
-<div class="judul-laporan">LAPORAN INVENTARIS BARANG</div>
+<div class="judul-laporan">RINGKASAN INVENTARIS BARANG</div>
 
 <div class="info-cetak">Dicetak: <?= date('d-m-Y H:i') ?></div>
-<div class="info-filter">Filter: <?= amankan($keteranganFilter) ?></div>
 
 <table class="table-laporan">
-    <thead>
+   <thead>
         <tr>
-            <th width="4%">No</th>
-            <th width="11%">Kode Barang</th>
-            <th width="14%">Nama Peralatan</th>
-            <th width="13%">Tipe Barang</th>
-            <th width="6%">Tahun</th>
-            <th width="12%">Kategori / Sub</th>
-            <th width="10%">Merek</th>
-            <th width="10%">Lokasi</th>
-            <th width="10%">No. Inventaris</th>
-            <th width="10%">Kondisi</th>
+            <th width="30%">Nama Barang</th>
+            <th width="15%">Jumlah Barang</th>
+            <?php foreach ($dataRingkasan['daftar_kondisi'] as $k): ?>
+                <th><?= amankan($k['nama_kondisi']) ?></th>
+            <?php endforeach; ?>
         </tr>
     </thead>
     <tbody>
-        <?php if (!$data): ?>
-            <tr><td colspan="10" class="text-center py-4">Tidak ada data yang ditemukan.</td></tr>
+        <?php if (!$dataRingkasan['ringkasan']): ?>
+            <tr><td colspan="<?= 2 + count($dataRingkasan['daftar_kondisi']) ?>" class="text-center py-4">Belum ada data.</td></tr>
         <?php endif; ?>
-        <?php foreach ($data as $i => $row): ?>
+        <?php foreach ($dataRingkasan['ringkasan'] as $nama => $info): ?>
             <tr>
-                <td class="text-center"><?= $i + 1 ?></td>
-                <td><?= amankan($row['kode_barang']) ?></td>
-                <td><?= amankan($row['nama_peralatan']) ?></td>
-                <td><?= amankan($row['tipe_barang']) ?></td>
-                <td class="text-center"><?= amankan($row['tahun_perolehan']) ?></td>
-                <td><?= amankan($row['nama_kategori']) ?> / <?= amankan($row['nama_subkategori']) ?></td>
-                <td><?= amankan($row['nama_merek']) ?></td>
-                <td><?= amankan($row['nama_ruangan']) ?></td>
-                <td class="text-center">
-                    <?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '-' ?>
-                </td>
-                <td class="text-center">
-                    <span class="badge-kondisi" style="background-color: <?= amankan($row['kode_warna']) ?>">
-                        <?= amankan($row['kondisi']) ?>
-                    </span>
-                </td>
+                <td><?= amankan($nama) ?></td>
+                <td class="text-center fw-bold"><?= $info['total'] ?></td>
+                <?php foreach ($dataRingkasan['daftar_kondisi'] as $k): ?>
+                    <td class="text-center"><?= $info['kondisi'][$k['id']] ?? 0 ?></td>
+                <?php endforeach; ?>
             </tr>
         <?php endforeach; ?>
     </tbody>
 </table>
 
-<div class="total-data">Total Data: <?= count($data) ?> barang</div>
+<div class="total-data">
+    Total Peralatan : <?= count($dataRingkasan['ringkasan']) ?> jenis   
+</div>
 
 </body>
 </html>

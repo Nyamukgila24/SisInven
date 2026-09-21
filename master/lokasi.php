@@ -106,6 +106,8 @@ require_once __DIR__ . '/../includes/header.php';
 </form>
 
 <script>
+
+  
 function bukaTambah() {
   document.getElementById('fJudul').innerText = 'Tambah Lokasi';
   document.getElementById('fId').value = '';
