@@ -14,6 +14,10 @@ $statistikKondisi = $pdo->query(
      ORDER BY kb.id'
 )->fetchAll();
 
+$chartLabels = array_column($statistikKondisi, 'nama_kondisi');
+$chartData   = array_map('intval', array_column($statistikKondisi, 'jumlah'));
+$chartColors = array_column($statistikKondisi, 'kode_warna');
+
 $barangTerbaru = $pdo->query(
     'SELECT b.kode_barang, np.nama_peralatan, kb.nama_kondisi, kb.kode_warna, b.user_last_edit, b.timestamp_last_edit
      FROM barang b
@@ -29,20 +33,27 @@ require_once __DIR__ . '/includes/header.php';
 <h4 class="mb-4">Selamat datang, <?= amankan($_SESSION['nama_lengkap']) ?> 👋</h4>
 
 <div class="row g-3">
-  <div class="col-6 col-md-3">
-    <div class="card dashboard-stat p-3 text-center">
-      <div class="display-6"><?= (int) $totalBarang ?></div>
+  <div class="col-md-4">
+    <div class="card dashboard-stat p-3 text-center h-100 d-flex flex-column justify-content-center">
+      <div class="display-3 fw-bold"><?= (int) $totalBarang ?></div>
       <div class="text-muted small">Total Barang</div>
     </div>
   </div>
-  <?php foreach ($statistikKondisi as $sk): ?>
-  <div class="col-6 col-md-3">
-    <div class="card dashboard-stat p-3 text-center">
-      <div class="display-6" style="color: <?= amankan($sk['kode_warna']) ?>"><?= (int) $sk['jumlah'] ?></div>
-      <div class="text-muted small"><?= amankan($sk['nama_kondisi']) ?></div>
+  <div class="col-md-8">
+    <div class="card p-3 h-100">
+      <h6 class="mb-3"><i class="bi bi-pie-chart"></i> Diagram Kondisi Barang</h6>
+      <?php if ($totalBarang > 0): ?>
+        <div style="position: relative; height: 240px;">
+          <canvas id="chartKondisi"></canvas>
+        </div>
+      <?php else: ?>
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-pie-chart" style="font-size: 3rem; opacity: 0.3;"></i>
+          <p class="mt-2 mb-0">Belum ada data barang.</p>
+        </div>
+      <?php endif; ?>
     </div>
   </div>
-  <?php endforeach; ?>
 </div>
 
 <div class="row g-3 mt-1">
@@ -79,5 +90,78 @@ require_once __DIR__ . '/includes/header.php';
     </div>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('chartKondisi');
+  if (!canvas) return;
+
+  const labels = <?= json_encode($chartLabels) ?>;
+  const data   = <?= json_encode($chartData) ?>;
+  const colors = <?= json_encode($chartColors) ?>;
+  const total  = <?= (int) $totalBarang ?>;
+
+  new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors,
+        borderColor: '#fff',
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            usePointStyle: true,
+            padding: 16,
+            font: { size: 13 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const val = ctx.parsed;
+              const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+              return ` ${ctx.label}: ${val} (${pct}%)`;
+            }
+          }
+        }
+      }
+    },
+    plugins: [{
+      id: 'centerText',
+      afterDraw: function(chart) {
+        const meta = chart.getDatasetMeta(0);
+        if (!meta.data.length) return;
+        const x = meta.data[0].x;
+        const y = meta.data[0].y;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.font = 'bold 34px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = '#212529';
+        ctx.fillText(total, x, y - 8);
+
+        ctx.font = '12px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = '#6c757d';
+        ctx.fillText('Total', x, y + 20);
+
+        ctx.restore();
+      }
+    }]
+  });
+})();
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

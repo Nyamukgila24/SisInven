@@ -35,8 +35,6 @@ $daftarKategori = $pdo->query('SELECT * FROM kategori ORDER BY nama_kategori')->
 $daftarMerek = $pdo->query('SELECT * FROM merek ORDER BY nama_merek')->fetchAll();
 $daftarLokasi = $pdo->query('SELECT * FROM lokasi ORDER BY nama_ruangan')->fetchAll();
 $daftarKondisi = $pdo->query('SELECT * FROM kondisi_barang ORDER BY id')->fetchAll();
-
-// Daftar tipe untuk datalist (saran otomatis)
 $daftarTipe = $pdo->query('SELECT DISTINCT tipe_barang FROM barang WHERE tipe_barang IS NOT NULL AND tipe_barang <> "" ORDER BY tipe_barang')->fetchAll(PDO::FETCH_COLUMN);
 
 $daftarSubkategoriAwal = [];
@@ -84,9 +82,6 @@ require_once __DIR__ . '/../includes/header.php';
 
         <div class="row g-3">
 
-      <!-- ============================================ -->
-      <!-- GRUP 1: KLASIFIKASI BARANG                   -->
-      <!-- ============================================ -->
       <div class="col-12">
         <h6 class="text-primary border-bottom pb-2 mb-0">
           <i class="bi bi-diagram-3"></i> Klasifikasi Barang
@@ -133,9 +128,6 @@ require_once __DIR__ . '/../includes/header.php';
         <?php endif; ?>
       </div>
 
-      <!-- ============================================ -->
-      <!-- GRUP 2: IDENTITAS PRODUK                     -->
-      <!-- ============================================ -->
       <div class="col-12 mt-4">
         <h6 class="text-primary border-bottom pb-2 mb-0">
           <i class="bi bi-tag"></i> Identitas Produk
@@ -169,9 +161,6 @@ require_once __DIR__ . '/../includes/header.php';
               placeholder="Contoh: <?= $tahunSekarang ?>">
       </div>
 
-      <!-- ============================================ -->
-      <!-- GRUP 3: PENEMPATAN & JUMLAH                  -->
-      <!-- ============================================ -->
       <div class="col-12 mt-4">
         <h6 class="text-primary border-bottom pb-2 mb-0">
           <i class="bi bi-geo-alt"></i> Penempatan & Jumlah
@@ -209,9 +198,6 @@ require_once __DIR__ . '/../includes/header.php';
         <?php endif; ?>
       </div>
 
-      <!-- ============================================ -->
-      <!-- GRUP 4: STATUS ASET                          -->
-      <!-- ============================================ -->
       <div class="col-12 mt-4">
         <h6 class="text-primary border-bottom pb-2 mb-0">
           <i class="bi bi-shield-check"></i> Status Aset
@@ -258,9 +244,6 @@ require_once __DIR__ . '/../includes/header.php';
       </div>
       <?php endif; ?>
 
-      <!-- ============================================ -->
-      <!-- GRUP 5: SPESIFIKASI                          -->
-      <!-- ============================================ -->
       <div class="col-12 mt-4">
         <h6 class="text-primary border-bottom pb-2 mb-0">
           <i class="bi bi-card-text"></i> Detail Spesifikasi
@@ -318,9 +301,6 @@ if (document.querySelector('#selMerek')) {
   });
 }
 
-// =================================================================
-// Toggle Seragam vs Per-Unit
-// =================================================================
 const daftarKondisiJs = <?= json_encode($daftarKondisi) ?>;
 const tahunSekarangJs = <?= $tahunSekarang ?>;
 const jumlahInput       = document.getElementById('jumlahBarang');
@@ -339,13 +319,27 @@ function opsiKondisiHtml() {
 
 function renderBarisPerUnit() {
   const jumlah = parseInt(jumlahInput.value) || 1;
-  bodyPerUnit.innerHTML = ''; 
+
+  const tipeSeragam  = document.getElementById('inp__tipe')?.value.trim()  || '';
+  const tahunSeragam = document.getElementById('inp__tahun')?.value.trim() || '';
+
+  bodyPerUnit.innerHTML = '';
   for (let i = 1; i <= jumlah; i++) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>Barang #${i}</td>
-      <td><input type="text" name="tipe_unit[]" class="form-control form-control-sm" list="daftarTipeList" required placeholder="Contoh: AS123"></td>
-      <td><input type="number" name="tahun_unit[]" class="form-control form-control-sm" required min="1900" max="${tahunSekarangJs}" placeholder="${tahunSekarangJs}"></td>
+      <td>
+        <input type="text" name="tipe_unit[]" class="form-control form-control-sm"
+               list="daftarTipeList" required
+               value="${tipeSeragam}"
+               placeholder="Contoh: AS123">
+      </td>
+      <td>
+        <input type="number" name="tahun_unit[]" class="form-control form-control-sm"
+               required min="1990" max="${tahunSekarangJs}"
+               value="${tahunSeragam}"
+               placeholder="${tahunSekarangJs}">
+      </td>
       <td><select name="kondisi_unit[]" class="form-select form-select-sm" required>${opsiKondisiHtml()}</select></td>
       <td><input type="text" name="nomor_inventaris_unit[]" class="form-control form-control-sm" placeholder="Opsional"></td>
     `;
