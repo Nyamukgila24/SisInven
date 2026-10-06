@@ -100,10 +100,10 @@ require_once __DIR__ . '/../includes/header.php';
         <tr>
           <th>Kode Barang</th>
           <th>Peralatan</th>
-          <th>Tipe</th>
-          <th>Tahun</th>
           <th>Kategori / Subkategori</th>
           <th>Merek</th>
+          <th>Tipe</th>
+          <th>Tahun</th>
           <th>Lokasi</th>
           <th>No. Inventaris</th>
           <th>Kondisi</th>
@@ -118,10 +118,10 @@ require_once __DIR__ . '/../includes/header.php';
         <tr>
           <td class="kode-barang"><?= amankan($row['kode_barang']) ?></td>
           <td><?= amankan($row['nama_peralatan']) ?></td>
-          <td><?= amankan($row['tipe_barang']) ?></td>
-          <td><?= amankan($row['tahun_perolehan']) ?></td>
           <td><small><?= amankan($row['nama_kategori']) ?> / <?= amankan($row['nama_subkategori']) ?></small></td>
           <td><?= amankan($row['nama_merek']) ?></td>
+          <td><?= amankan($row['tipe_barang']) ?></td>
+          <td><?= amankan($row['tahun_perolehan']) ?></td>
           <td><?= amankan($row['nama_ruangan']) ?></td>
           <td><?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '<span class="text-muted">-</span>' ?></td>
           <td><span class="badge" style="background-color: <?= amankan($row['kode_warna']) ?>"><?= amankan($row['nama_kondisi']) ?></span></td>

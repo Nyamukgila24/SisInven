@@ -90,24 +90,48 @@ require_once __DIR__ . '/../includes/header.php';
   </button>
 </div>
 
+<style>
+  .table-user { table-layout: fixed; width: 100%; }
+  .table-user th, .table-user td {
+    font-size: 12px;
+    padding: 6px 4px;
+    word-break: normal;
+    overflow-wrap: break-word;
+    white-space: normal;
+    vertical-align: middle;
+  }
+  .table-user th:nth-child(1) { width: 24%; }   /* Nama */
+  .table-user th:nth-child(2) { width: 18%; }   /* Username */
+  .table-user th:nth-child(3) { width: 33%; }   /* Email */
+  .table-user th:nth-child(4) { width: 25%; }   /* Aksi */
+  .table-user td:nth-child(4) .btn {
+    padding: 3px 6px;
+    font-size: 12px;
+  }
+</style>
+
 <div class="card p-3">
-  <table class="table table-hover align-middle mb-0">
-    <thead><tr><th>Nama Lengkap</th><th>Username</th><th>Email</th><th style="width:220px">Aksi</th></tr></thead>
+  <div class="table-responsive">
+    <table class="table table-user table-hover align-middle mb-0">
+    <thead><tr><th>Nama Lengkap</th><th>Username</th><th>Email</th><th>Aksi</th></tr></thead>
     <tbody>
     <?php foreach ($daftar as $row): ?>
       <tr>
         <td><?= amankan($row['nama_lengkap']) ?> <?= (int)$row['id'] === (int)$_SESSION['user_id'] ? '<span class="badge bg-info text-dark">Anda</span>' : '' ?></td>
         <td><?= amankan($row['username']) ?></td>
         <td><?= amankan($row['email']) ?></td>
-        <td class="d-flex gap-1">
-          <button class="btn btn-sm btn-outline-primary" onclick='bukaEdit(<?= json_encode($row) ?>)' title="Ubah Data"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-warning" onclick='bukaReset(<?= json_encode($row) ?>)' title="Reset Password"><i class="bi bi-key"></i></button>
-          <button class="btn btn-sm btn-outline-danger" onclick="hapus(<?= (int)$row['id'] ?>)" title="Hapus"><i class="bi bi-trash"></i></button>
+        <td>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-primary" onclick='bukaEdit(<?= json_encode($row) ?>)' title="Ubah Data"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-warning" onclick='bukaReset(<?= json_encode($row) ?>)' title="Reset Password"><i class="bi bi-key"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="hapus(<?= (int)$row['id'] ?>)" title="Hapus"><i class="bi bi-trash"></i></button>
+          </div>
         </td>
       </tr>
     <?php endforeach; ?>
     </tbody>
-  </table>
+    </table>
+  </div>
 </div>
 
 <!-- Modal Tambah/Edit Pengguna -->

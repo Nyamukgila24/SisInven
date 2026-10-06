@@ -69,8 +69,7 @@ $keteranganFilter = $judulFilter ? implode(' | ', $judulFilter) : 'Semua Data';
 </head>
 <body>
 
-<div class="no-print mb-3 d-flex justify-content-between">
-    <a href="<?= $base ?>/laporan/index.php" class="btn btn-outline-secondary">&larr; Kembali</a>
+<div class="no-print mb-3 text-end">
     <button onclick="window.print()" class="btn btn-danger">
         <i class="bi bi-printer"></i> Cetak / Simpan sebagai PDF
     </button>

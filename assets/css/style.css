@@ -1,9 +1,3 @@
-/* =====================================================================
-   GAYA TAMPILAN SISINVEN
-   File ini sengaja dipisah dari HTML supaya warna/gaya tampilan
-   bisa diubah tanpa menyentuh kode PHP.
-   ===================================================================== */
-
 :root {
     --sisinven-primary: #145374;
     --sisinven-primary-dark: #0b2f42;
@@ -113,6 +107,7 @@ body {
     color: #fff !important;
     text-transform: uppercase;
     font-size: 10.5px;
+    text-align: center !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
@@ -145,3 +140,41 @@ body {
     body { margin: 0; }
     @page { margin: 15mm; }
 }
+
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.form-select, .form-control {
+    max-width: 100%;
+}
+
+.table-user { 
+    table-layout: fixed !important; 
+    width: 100% !important; }
+
+.table-user th,
+.table-user td {
+  word-break: normal;         /* ← ganti */
+  overflow-wrap: break-word;  /* ← ganti */
+  white-space: normal;
+  padding: 6px 4px;
+  font-size: 13px;
+}
+.table-user th:nth-child(1) { 
+    width: 22% !important; }
+
+.table-user th:nth-child(2) { 
+    width: 20% !important; }
+
+.table-user th:nth-child(3) { 
+    width: 38% !important; }
+
+.table-user th:nth-child(4) { 
+    width: 20% !important; }

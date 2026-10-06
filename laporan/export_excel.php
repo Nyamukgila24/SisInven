@@ -21,11 +21,11 @@ header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $namaFile . '"');
 
 $output = fopen('php://output', 'w');
-fputs($output, "\xEF\xBB\xBF"); // BOM biar Excel baca UTF-8 dengan benar
+fputs($output, "\xEF\xBB\xBF"); 
 
 fputcsv($output, [
-    'Kode Barang', 'Nama Peralatan', 'Tipe Barang', 'Tahun Perolehan',
-    'Kategori', 'Subkategori', 'Merek', 'Lokasi',
+    'Kode Barang', 'Nama Peralatan', 'Kategori', 'Subkategori',
+    'Merek', 'Tipe Barang', 'Tahun Perolehan', 'Lokasi',
     'Spesifikasi', 'Nomor Inventaris Kantor', 'Kondisi',
     'Diubah Oleh', 'Waktu Perubahan Terakhir',
 ]);
@@ -34,11 +34,11 @@ foreach ($data as $row) {
     fputcsv($output, [
         $row['kode_barang'],
         $row['nama_peralatan'],
-        $row['tipe_barang'],
-        $row['tahun_perolehan'],
         $row['nama_kategori'],
         $row['nama_subkategori'],
         $row['nama_merek'],
+        $row['tipe_barang'],
+        $row['tahun_perolehan'],
         $row['nama_ruangan'],
         $row['spesifikasi'],
         $row['nomor_inventaris_kantor'] ?? '',

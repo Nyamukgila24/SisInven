@@ -168,28 +168,30 @@ require_once __DIR__ . '/../includes/header.php';
         <tr>
           <th>Kode</th>
           <th>Peralatan</th>
+          <th>Kategori / Sub</th>
+          <th>Merek</th>
           <th>Tipe</th>
           <th>Tahun</th>
-          <th>Kategori</th>
-          <th>Merek</th>
           <th>Lokasi</th>
+          <th>Spesifikasi</th>
           <th>No. Inventaris</th>
           <th>Kondisi</th>
         </tr>
       </thead>
       <tbody>
         <?php if (!$data): ?>
-          <tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data yang cocok dengan filter.</td></tr>
+          <tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data yang cocok dengan filter.</td></tr>
         <?php endif; ?>
         <?php foreach ($data as $row): ?>
           <tr>
             <td class="kode-barang"><?= amankan($row['kode_barang']) ?></td>
             <td><?= amankan($row['nama_peralatan']) ?></td>
-            <td><?= amankan($row['tipe_barang']) ?></td>
-            <td><?= amankan($row['tahun_perolehan']) ?></td>
             <td><small><?= amankan($row['nama_kategori']) ?> / <?= amankan($row['nama_subkategori']) ?></small></td>
             <td><?= amankan($row['nama_merek']) ?></td>
+            <td><?= amankan($row['tipe_barang']) ?></td>
+            <td><?= amankan($row['tahun_perolehan']) ?></td>
             <td><?= amankan($row['nama_ruangan']) ?></td>
+            <td><small><?= amankan($row['spesifikasi']) ?></small></td>
             <td>
               <?= $row['nomor_inventaris_kantor']
                     ? amankan($row['nomor_inventaris_kantor'])

@@ -1,25 +1,10 @@
 <?php
-/**
- * =====================================================================
- * KONFIGURASI KONEKSI DATABASE
- * =====================================================================
- * Ini SATU-SATUNYA file yang perlu diubah jika pengaturan database
- * di server/komputer Anda berbeda (misalnya password MySQL diubah,
- * atau nama database diganti).
- *
- * Jika ada error "Koneksi database gagal", cek 4 baris di bawah ini.
- * =====================================================================
- */
 
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'sisinven');
 define('DB_USER', 'root');
-define('DB_PASS', '');      // Default XAMPP: password kosong
+define('DB_PASS', ''); 
 
-/**
- * Membuat dan mengembalikan koneksi PDO ke database.
- * Dipakai oleh semua halaman lewat: $pdo = getKoneksi();
- */
 function getKoneksi() {
     static $pdo = null;
 
@@ -31,6 +16,7 @@ function getKoneksi() {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
+            $pdo->exec("SET time_zone = '+07:00'");
         } catch (PDOException $e) {
             die('Koneksi database gagal. Periksa file config/database.php. Detail: ' . $e->getMessage());
         }
