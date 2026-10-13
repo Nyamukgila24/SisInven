@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/functions.php';
 wajibLogin();
 $pdo = getKoneksi();
+$baseUrl = urlDasar();
 
 $cari = trim($_GET['cari'] ?? '');
 $filterKondisi = $_GET['kondisi'] ?? '';
@@ -107,7 +108,7 @@ require_once __DIR__ . '/../includes/header.php';
           <th>Lokasi</th>
           <th>No. Inventaris</th>
           <th>Kondisi</th>
-          <th style="width:120px">Aksi</th>
+          <th style="width:140px; white-space:nowrap;">Aksi</th>
         </tr>
       </thead>
       <tbody>
@@ -126,8 +127,11 @@ require_once __DIR__ . '/../includes/header.php';
           <td><?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '<span class="text-muted">-</span>' ?></td>
           <td><span class="badge" style="background-color: <?= amankan($row['kode_warna']) ?>"><?= amankan($row['nama_kondisi']) ?></span></td>
           <td>
-            <a href="form.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-            <button class="btn btn-sm btn-outline-danger" onclick="hapus(<?= $row['id'] ?>)"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-outline-info" onclick='bukaDetail(<?= json_encode($row) ?>)' title="Lihat Detail">
+            <i class="bi bi-eye"></i>
+            </button>
+            <a href="form.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary" title="Ubah"><i class="bi bi-pencil"></i></a>
+            <button class="btn btn-sm btn-outline-danger" onclick="hapus(<?= $row['id'] ?>)" title="Hapus"><i class="bi bi-trash"></i></button>
           </td>
         </tr>
       <?php endforeach; ?>
@@ -149,6 +153,91 @@ function hapus(id) {
     document.getElementById('formHapus').submit();
   }
 }
+
+function bukaDetail(row) {
+  document.getElementById('dKode').textContent      = row.kode_barang || '-';
+  document.getElementById('dPeralatan').textContent = row.nama_peralatan || '-';
+  document.getElementById('dKategori').textContent  = (row.nama_kategori || '-') + ' / ' + (row.nama_subkategori || '-');
+  document.getElementById('dMerek').textContent     = row.nama_merek || '-';
+  document.getElementById('dTipe').textContent      = row.tipe_barang || '-';
+  document.getElementById('dTahun').textContent     = row.tahun_perolehan || '-';
+  document.getElementById('dLokasi').textContent    = row.nama_ruangan || '-';
+  document.getElementById('dNoInv').textContent     = row.nomor_inventaris_kantor || '-';
+  document.getElementById('dSpesifikasi').textContent = row.spesifikasi || '-';
+
+  document.getElementById('dKondisi').innerHTML =
+    '<span class="badge" style="background-color:' + (row.kode_warna || '#6c757d') + '">' +
+    (row.nama_kondisi || '-') + '</span>';
+
+  document.getElementById('dEdit').innerHTML =
+    (row.user_last_edit || '-') + '<br><small class="text-muted">' +
+    (row.timestamp_last_edit || '-') + '</small>';
+
+  const img    = document.getElementById('dFoto');
+  const kosong = document.getElementById('dFotoKosong');
+  if (row.foto_peralatan) {
+    img.src = '<?= $baseUrl ?>/uploads/peralatan/' + row.foto_peralatan;
+    img.classList.remove('d-none');
+    kosong.classList.add('d-none');
+  } else {
+    img.src = '';
+    img.classList.add('d-none');
+    kosong.classList.remove('d-none');
+  }
+
+  new bootstrap.Modal(document.getElementById('modalDetail')).show();
+}
 </script>
+
+<div class="modal fade" id="modalDetail" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-info-circle"></i> Detail Barang</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+
+          <!-- ===== KIRI: Foto (50%) ===== -->
+          <div class="col-md-6">
+            <div id="dFotoWrap" class="text-center">
+              <img id="dFoto" src="" alt="Foto Barang"
+                  class="img-fluid rounded d-none w-100"
+                  style="max-height: 500px; object-fit: contain;">
+              <div id="dFotoKosong" class="text-muted py-5">
+                <i class="bi bi-image" style="font-size: 4rem; opacity: 0.3;"></i>
+                <p class="mt-2 mb-0">Tidak ada foto</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== KANAN: Info Detail (50%) ===== -->
+          <div class="col-md-6">
+            <table class="table table-sm mb-0">
+              <tbody>
+                <tr><th width="40%">Kode Barang</th><td id="dKode" class="kode-barang"></td></tr>
+                <tr><th>Nama Peralatan</th><td id="dPeralatan"></td></tr>
+                <tr><th>Kategori / Sub</th><td id="dKategori"></td></tr>
+                <tr><th>Merek</th><td id="dMerek"></td></tr>
+                <tr><th>Tipe Barang</th><td id="dTipe"></td></tr>
+                <tr><th>Tahun Perolehan</th><td id="dTahun"></td></tr>
+                <tr><th>Lokasi / Ruangan</th><td id="dLokasi"></td></tr>
+                <tr><th>No. Inventaris</th><td id="dNoInv"></td></tr>
+                <tr><th>Kondisi</th><td id="dKondisi"></td></tr>
+                <tr><th>Spesifikasi</th><td id="dSpesifikasi"></td></tr>
+                <tr><th>Terakhir Diubah</th><td id="dEdit"></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
