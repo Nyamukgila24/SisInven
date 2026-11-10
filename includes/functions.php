@@ -54,8 +54,48 @@ function catatJejakPerubahan() {
     return [$_SESSION['nama_lengkap'] ?? 'Tidak diketahui', date('Y-m-d H:i:s')];
 }
 
+/**
+ * Mencari kode peralatan (digit ke-3) yang unik untuk subkategori tertentu.
+ * Kalau barang sudah ada di subkategori itu, pakai kodenya.
+ * Kalau belum ada, cari nomor urut peralatan terakhir di subkategori itu, lalu +1.
+ */
+function getKodePeralatanSpesifik($pdo, $subkategoriId, $peralatanId, $excludeIds = []) {
+    $excludeClause = '';
+    if (!empty($excludeIds)) {
+        // Ubah array ID jadi string: 1,2,3
+        $idStr = implode(',', array_map('intval', $excludeIds));
+        $excludeClause = " AND id NOT IN ($idStr) ";
+    }
+
+    // Cek apakah peralatan ini sudah ada di subkategori ini
+    $stmt = $pdo->prepare("
+        SELECT kode_barang FROM barang 
+        WHERE subkategori_id = ? AND nama_peralatan_id = ? $excludeClause
+        LIMIT 1
+    ");
+    $stmt->execute([$subkategoriId, $peralatanId]);
+    $kodeBarangExisting = $stmt->fetchColumn();
+
+    if ($kodeBarangExisting) {
+        // Kalau sudah ada, ambil digit ke-3 dari kode barang lama (contoh: 1.3.1.5 -> ambil angka 1)
+        $pecah = explode('.', $kodeBarangExisting);
+        return $pecah[2] ?? '1';
+    }
+
+    // Kalau belum ada, cari angka ke-3 terbesar di subkategori ini, lalu +1
+    $stmt = $pdo->prepare("
+        SELECT MAX(CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(kode_barang, '.', 3), '.', -1) AS UNSIGNED)) 
+        FROM barang 
+        WHERE subkategori_id = ? $excludeClause
+    ");
+    $stmt->execute([$subkategoriId]);
+    $maxKode = $stmt->fetchColumn();
+
+    return ($maxKode === null || $maxKode == 0) ? 1 : $maxKode + 1;
+}
+
 function generateKodeBarang($pdo, $kategoriId, $subkategoriId, $peralatanId) {
-    // Ambil kode dari masing-masing tabel master
+    // Ambil kode dari tabel master
     $stmt = $pdo->prepare('SELECT kode_kategori FROM kategori WHERE id = ?');
     $stmt->execute([$kategoriId]);
     $kodeKategori = $stmt->fetchColumn();
@@ -64,15 +104,14 @@ function generateKodeBarang($pdo, $kategoriId, $subkategoriId, $peralatanId) {
     $stmt->execute([$subkategoriId, $kategoriId]);
     $kodeSubkategori = $stmt->fetchColumn();
 
-    $stmt = $pdo->prepare('SELECT kode_peralatan FROM nama_peralatan WHERE id = ?');
-    $stmt->execute([$peralatanId]);
-    $kodePeralatan = $stmt->fetchColumn();
-
-    if ($kodeKategori === false || $kodeSubkategori === false || $kodePeralatan === false) {
+    if ($kodeKategori === false || $kodeSubkategori === false) {
         throw new Exception('Data master tidak lengkap/tidak sesuai untuk membuat kode barang.');
     }
 
-    // Cari nomor urut berikutnya untuk kombinasi kategori+subkategori+peralatan ini
+    // DAPATKAN DIGIT KE-3 DENGAN FUNGSI BARU
+    $kodePeralatan = getKodePeralatanSpesifik($pdo, $subkategoriId, $peralatanId);
+
+    // Cari nomor urut berikutnya (digit ke-4)
     $stmt = $pdo->prepare(
         'SELECT COALESCE(MAX(nomor_urut), 0) + 1
          FROM barang
@@ -162,7 +201,7 @@ function ambilDataLaporan($pdo, $kondisiId = '', $statusAset = '', $tipeBarang =
         $params[] = $lokasiId;
     }
 
-    $sql .= ' ORDER BY b.kode_barang';
+    $sql .= ' ORDER BY b.id DESC';
 
     if ($halaman !== null) {
         $sql .= ' LIMIT ' . (int) $perHalaman . ' OFFSET ' . (int) (($halaman - 1) * $perHalaman);
@@ -243,16 +282,67 @@ function ambilRingkasanBarang($pdo) {
 
 function renderPaginasi($halamanSekarang, $totalData, $perHalaman, $paramsLain = []) {
     $totalHalaman = (int) ceil($totalData / $perHalaman);
-    if ($totalHalaman <= 1) 
-        return;
+    if ($totalHalaman <= 1) return;
 
+    // Bersihkan parameter URL
     $paramsLain = array_filter($paramsLain, fn($v) => $v !== '');
-    echo '<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center mb-0">';
-    for ($i = 1; $i <= $totalHalaman; $i++) {
-        $query = http_build_query(array_merge($paramsLain, ['halaman' => $i]));
-        $aktif = $i === $halamanSekarang ? ' active' : '';
-        echo "<li class=\"page-item{$aktif}\"><a class=\"page-link\" href=\"?{$query}\">{$i}</a></li>";
+    $queryDasar = $paramsLain ? '&' . http_build_query($paramsLain) : '';
+
+    echo '<nav class="mt-3"><ul class="pagination justify-content-center mb-0">';
+
+    // 1. Tombol Awal (<<)
+    $linkAwal = '?halaman=1' . $queryDasar;
+    echo '<li class="page-item ' . ($halamanSekarang <= 1 ? 'disabled' : '') . '">';
+    echo '<a class="page-link" href="' . ($halamanSekarang <= 1 ? '#' : $linkAwal) . '">&laquo;</a></li>';
+
+    // 2. Tombol Previous (<)
+    $linkPrev = '?halaman=' . ($halamanSekarang - 1) . $queryDasar;
+    echo '<li class="page-item ' . ($halamanSekarang <= 1 ? 'disabled' : '') . '">';
+    echo '<a class="page-link" href="' . ($halamanSekarang <= 1 ? '#' : $linkPrev) . '">&lsaquo;</a></li>';
+
+    // 3. Logika Angka & Titik-titik
+    $mulai = max(1, $halamanSekarang - 2);
+    $selesai = min($totalHalaman, $halamanSekarang + 2);
+
+    // Titik kiri (...)
+    if ($mulai > 1) {
+        if ($mulai > 2) {
+            // Kalau jaraknya jauh, tampilkan tombol titik
+            echo '<li class="page-item"><a class="page-link" href="#" onclick="bukaModalHalaman(1, ' . ($mulai - 1) . ', ' . $halamanSekarang . ', \'' . htmlspecialchars($queryDasar) . '\'); return false;">...</a></li>';
+        } else {
+            // Kalau cuma sisa 1 angka (misal halaman 3), langsung tampilkan angka 1
+            echo '<li class="page-item"><a class="page-link" href="?halaman=1' . $queryDasar . '">1</a></li>';
+        }
     }
+
+    // Looping angka tengah
+    for ($i = $mulai; $i <= $selesai; $i++) {
+        $aktif = $i === $halamanSekarang ? 'active' : '';
+        $link = '?halaman=' . $i . $queryDasar;
+        echo '<li class="page-item ' . $aktif . '"><a class="page-link" href="' . $link . '">' . $i . '</a></li>';
+    }
+
+    // Titik kanan (...)
+    if ($selesai < $totalHalaman) {
+        if ($selesai < $totalHalaman - 1) {
+            // Kalau jaraknya jauh, tampilkan tombol titik
+            echo '<li class="page-item"><a class="page-link" href="#" onclick="bukaModalHalaman(' . ($selesai + 1) . ', ' . $totalHalaman . ', ' . $halamanSekarang . ', \'' . htmlspecialchars($queryDasar) . '\'); return false;">...</a></li>';
+        } else {
+            // Kalau cuma sisa 1 angka, langsung tampilkan angka terakhir
+            echo '<li class="page-item"><a class="page-link" href="?halaman=' . $totalHalaman . $queryDasar . '">' . $totalHalaman . '</a></li>';
+        }
+    }
+
+    // 4. Tombol Next (>)
+    $linkNext = '?halaman=' . ($halamanSekarang + 1) . $queryDasar;
+    echo '<li class="page-item ' . ($halamanSekarang >= $totalHalaman ? 'disabled' : '') . '">';
+    echo '<a class="page-link" href="' . ($halamanSekarang >= $totalHalaman ? '#' : $linkNext) . '">&rsaquo;</a></li>';
+
+    // 5. Tombol Akhir (>>)
+    $linkAkhir = '?halaman=' . $totalHalaman . $queryDasar;
+    echo '<li class="page-item ' . ($halamanSekarang >= $totalHalaman ? 'disabled' : '') . '">';
+    echo '<a class="page-link" href="' . ($halamanSekarang >= $totalHalaman ? '#' : $linkAkhir) . '">&raquo;</a></li>';
+
     echo '</ul></nav>';
 }
 

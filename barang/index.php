@@ -9,6 +9,9 @@ $filterKondisi = $_GET['kondisi'] ?? '';
 $filterTahun = $_GET['tahun'] ?? '';
 $halaman = max(1, (int) ($_GET['halaman'] ?? 1));
 $perHalaman = 10;
+$masterKategori = $pdo->query('SELECT * FROM kategori ORDER BY nama_kategori')->fetchAll();
+$masterSubkategori = $pdo->query('SELECT * FROM subkategori ORDER BY nama_subkategori')->fetchAll();
+$masterPeralatan = $pdo->query('SELECT * FROM nama_peralatan ORDER BY nama_peralatan')->fetchAll();
 
 $sqlDasar = 'FROM barang b
         JOIN kategori k ON k.id = b.kategori_id
@@ -127,11 +130,16 @@ require_once __DIR__ . '/../includes/header.php';
           <td><?= $row['nomor_inventaris_kantor'] ? amankan($row['nomor_inventaris_kantor']) : '<span class="text-muted">-</span>' ?></td>
           <td><span class="badge" style="background-color: <?= amankan($row['kode_warna']) ?>"><?= amankan($row['nama_kondisi']) ?></span></td>
           <td>
-            <button class="btn btn-sm btn-outline-info" onclick='bukaDetail(<?= json_encode($row) ?>)' title="Lihat Detail">
-            <i class="bi bi-eye"></i>
-            </button>
-            <a href="form.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary" title="Ubah"><i class="bi bi-pencil"></i></a>
-            <button class="btn btn-sm btn-outline-danger" onclick="hapus(<?= $row['id'] ?>)" title="Hapus"><i class="bi bi-trash"></i></button>
+            <div class="action-grid">
+              <button class="btn btn-sm btn-outline-warning" onclick='bukaKlasifikasi(<?= json_encode($row) ?>)' title="Ubah Klasifikasi">
+              <i class="bi bi-tags"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-info" onclick='bukaDetail(<?= json_encode($row) ?>)' title="Lihat Detail">
+              <i class="bi bi-eye"></i>
+              </button>
+              <a href="form.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary" title="Ubah"><i class="bi bi-pencil"></i></a>
+              <button class="btn btn-sm btn-outline-danger" onclick="hapus(<?= $row['id'] ?>)" title="Hapus"><i class="bi bi-trash"></i></button>
+            </div>
           </td>
         </tr>
       <?php endforeach; ?>
@@ -145,6 +153,71 @@ require_once __DIR__ . '/../includes/header.php';
 <form method="post" action="hapus.php" id="formHapus" class="d-none">
   <input type="hidden" name="id" id="hId">
 </form>
+
+<!-- ================= MODAL UBAH KLASIFIKASI ================= -->
+<div class="modal fade" id="modalKlasifikasi" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="proses_klasifikasi.php" id="formKlasifikasi">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-tags"></i> Ubah Klasifikasi Massal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          
+          <!-- Info Peringatan -->
+          <div class="alert alert-danger py-2 mb-3">
+              <small>
+                  <i class="bi bi-exclamation-triangle-fill"></i> 
+                  <strong>Perhatian!</strong> Fitur ini akan mengubah <strong>Kategori, Subkategori, dan Kode Barang</strong> secara massal untuk semua barang dengan klasifikasi lama yang sama.
+              </small>
+          </div>
+
+          <!-- Data Lama (Disembunyikan) -->
+          <input type="hidden" name="kategori_lama" id="k_lama">
+          <input type="hidden" name="sub_lama" id="s_lama">
+          <input type="hidden" name="peralatan_lama" id="p_lama">
+
+          <div class="mb-3">
+            <label class="form-label">Kategori Baru</label>
+            <select name="kategori_baru" id="selKategoriBaru" class="form-select" required>
+              <option value="">-- Pilih Kategori --</option>
+              <?php foreach ($masterKategori as $k): ?>
+                <option value="<?= $k['id'] ?>"><?= amankan($k['nama_kategori']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Subkategori Baru</label>
+            <select name="sub_baru" id="selSubBaru" class="form-select" required>
+              <option value="">-- Pilih Subkategori --</option>
+              <?php foreach ($masterSubkategori as $s): ?>
+                <option value="<?= $s['id'] ?>" data-kategori="<?= $s['kategori_id'] ?>"><?= amankan($s['nama_subkategori']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Nama Peralatan Baru</label>
+            <input type="text" name="peralatan_baru" class="form-control" list="listPeralatan" required placeholder="Ketik nama peralatan...">
+            <datalist id="listPeralatan">
+              <?php foreach ($masterPeralatan as $p): ?>
+                <option value="<?= amankan($p['nama_peralatan']) ?>">
+              <?php endforeach; ?>
+            </datalist>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-warning" onclick="return confirm('Yakin ingin mengubah klasifikasi massal ini? Kode barang akan dihitung ulang.')">Proses Ubah Massal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
   
 function hapus(id) {
@@ -187,6 +260,49 @@ function bukaDetail(row) {
 
   new bootstrap.Modal(document.getElementById('modalDetail')).show();
 }
+
+function bukaKlasifikasi(row) {
+  // Isi data lama ke form (disembunyikan)
+  document.getElementById('k_lama').value = row.kategori_id;
+  document.getElementById('s_lama').value = row.subkategori_id;
+  document.getElementById('p_lama').value = row.nama_peralatan_id;
+
+  // Isi otomatis dropdown dengan data saat ini (sebagai default)
+  document.getElementById('selKategoriBaru').value = row.kategori_id;
+  
+  // Trigger filter subkategori
+  filterSubkategori(); 
+  document.getElementById('selSubBaru').value = row.subkategori_id;
+  
+  // Isi nama peralatan
+  document.querySelector('input[name="peralatan_baru"]').value = row.nama_peralatan;
+
+  // Buka modal
+  new bootstrap.Modal(document.getElementById('modalKlasifikasi')).show();
+}
+
+// Fungsi untuk memfilter subkategori berdasarkan kategori yang dipilih
+function filterSubkategori() {
+  const katId = document.getElementById('selKategoriBaru').value;
+  const subSelect = document.getElementById('selSubBaru');
+  
+  // Sembunyikan opsi subkategori yang kategorinya beda
+  Array.from(subSelect.options).forEach(opt => {
+    if (opt.value === "") return;
+    if (opt.dataset.kategori === katId) {
+      opt.hidden = false;
+    } else {
+      opt.hidden = true;
+    }
+  });
+}
+
+// Event listener saat kategori baru diganti
+document.getElementById('selKategoriBaru').addEventListener('change', function() {
+  document.getElementById('selSubBaru').value = ""; // Reset sub
+  filterSubkategori();
+});
+
 </script>
 
 <div class="modal fade" id="modalDetail" tabindex="-1">

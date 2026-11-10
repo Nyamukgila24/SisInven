@@ -299,7 +299,8 @@ require_once __DIR__ . '/includes/header.php';
         datasets: [{
           data: <?= json_encode(array_map('intval', array_column($statistikKategori, 'jumlah'))) ?>,
           backgroundColor: '#145374',
-          borderRadius: 6
+          borderRadius: 6,
+          maxBarThickness: 60
         }]
       },
       options: {
@@ -322,7 +323,8 @@ require_once __DIR__ . '/includes/header.php';
         datasets: [{
           data: <?= json_encode(array_map('intval', array_column($statistikLokasi, 'jumlah'))) ?>,
           backgroundColor: '#00A8CC',
-          borderRadius: 6
+          borderRadius: 6,
+          maxBarThickness: 60
         }]
       },
       options: {
@@ -345,7 +347,8 @@ require_once __DIR__ . '/includes/header.php';
         datasets: [{
           data: <?= json_encode(array_map('intval', array_column($statistikTahun, 'jumlah'))) ?>,
           backgroundColor: '#fd7e14',
-          borderRadius: 6
+          borderRadius: 6,
+          maxBarThickness: 60
         }]
       },
       options: {
